@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# naver_blog_crawler.py - 네이버 블로그 크롤링 + 가게 분석 (200개 수집)
+# naver_blog_crawler.py - 네이버 블로그 크롤링 + 가게 분석 (500개 수집)
 
 import requests
 import json
@@ -64,15 +64,15 @@ class StoreProfile:
     avg_rating: float
 
 
-# ==================== 네이버 블로그 검색 (200개 수집) ====================
+# ==================== 네이버 블로그 검색 (500개 수집) ====================
 
-def search_naver_blog(query: str, total_count: int = 200) -> List[Dict]:
+def search_naver_blog(query: str, total_count: int = 500) -> List[Dict]:
     """
-    네이버 블로그 검색 API (최대 200개, 중복 제거)
+    네이버 블로그 검색 API (최대 500개, 중복 제거)
     
     Args:
         query: 검색어 (가게명)
-        total_count: 가져올 총 개수 (기본 200개)
+        total_count: 가져올 총 개수 (기본 500개)
     
     Returns:
         블로그 포스트 리스트 (중복 제거됨)
@@ -234,287 +234,165 @@ def extract_keywords(text: str) -> List[str]:
     
     # 서비스 키워드
     service_keywords = [
-        "친절", "불친절", "빠르다", "느리다", "서비스", 
-        "대기", "웨이팅", "예약"
+        "친절", "불친절", "빠르다", "느리다", "세심", "불편"
     ]
     
-    keywords = []
+    found_keywords = []
     text_lower = text.lower()
     
-    for keyword_list in [industry_keywords, concept_keywords, taste_keywords, service_keywords]:
-        for kw in keyword_list:
-            if kw in text_lower:
-                keywords.append(kw)
+    for keyword in industry_keywords + concept_keywords + taste_keywords + service_keywords:
+        if keyword in text_lower:
+            found_keywords.append(keyword)
     
-    return keywords
+    return found_keywords
 
 
-# ==================== 업종/상권 자동 추출 ====================
+# ==================== 감정 분석 (간단 버전) ====================
 
-def extract_industry_and_area(blogs: List[Dict]) -> tuple:
+def analyze_sentiment(text: str) -> str:
     """
-    블로그에서 업종과 상권 자동 추출
-    
-    Args:
-        blogs: 블로그 포스트 리스트
-    
-    Returns:
-        (업종, 상권)
+    간단한 감정 분석
     """
-    industry_counter = Counter()
-    area_counter = Counter()
+    positive_words = ["좋", "최고", "맛있", "친절", "깨끗", "추천"]
+    negative_words = ["나쁘", "별로", "맛없", "불친절", "더럽", "비추"]
     
-    # 업종 키워드
-    industry_map = {
-        "요리주점": ["요리주점", "안주집"],
-        "이자카야": ["이자카야", "야키토리"],
-        "술집": ["술집", "주점", "호프집"],
-        "바": ["바", "와인바", "칵테일바"],
-        "카페": ["카페", "디저트"],
-    }
+    pos_count = sum(1 for word in positive_words if word in text)
+    neg_count = sum(1 for word in negative_words if word in text)
     
-    # 상권 키워드
-    area_keywords = [
-        "건대", "홍대", "강남", "신촌", "이대", "성수", "잠실",
-        "이태원", "한남", "압구정", "청담", "가로수길",
-        "신사", "논현", "역삼", "선릉"
-    ]
-    
-    for blog in blogs:
-        text = (blog.get("title", "") + " " + blog.get("description", "")).lower()
-        
-        # 업종 추출
-        for industry, keywords in industry_map.items():
-            for kw in keywords:
-                if kw in text:
-                    industry_counter[industry] += 1
-        
-        # 상권 추출
-        for area in area_keywords:
-            if area in text:
-                area_counter[area] += 1
-    
-    # 가장 많이 언급된 것 선택
-    industry = industry_counter.most_common(1)[0][0] if industry_counter else "음식점"
-    area = area_counter.most_common(1)[0][0] if area_counter else "알 수 없음"
-    
-    return industry, area
+    if pos_count > neg_count:
+        return "긍정"
+    elif neg_count > pos_count:
+        return "부정"
+    else:
+        return "중립"
 
 
-# ==================== 가게 프로필 생성 ====================
+# ==================== 가게 프로필 분석 (블로그에서) ====================
 
-def create_store_profile(store_name: str, blogs: List[Dict]) -> StoreProfile:
+def analyze_store_from_blog(store_name: str, max_blogs: int = 500) -> StoreProfile:
     """
-    블로그에서 가게 프로필 자동 생성
+    블로그 데이터로부터 가게 프로필 자동 추출
     
     Args:
         store_name: 가게명
-        blogs: 블로그 포스트 리스트
+        max_blogs: 분석할 최대 블로그 수
     
     Returns:
-        StoreProfile
+        StoreProfile 객체
     """
-    print(f"\n🔍 [{store_name}] 블로그 분석 중... (총 {len(blogs)}개)")
+    print(f"\n{'='*60}")
+    print(f"📱 블로그 분석 시작: {store_name}")
+    print(f"{'='*60}")
     
-    # 1. 업종/상권 추출
-    industry, area = extract_industry_and_area(blogs)
-    print(f"   📍 업종: {industry} | 상권: {area}")
+    # 블로그 검색
+    blogs = search_naver_blog(store_name, total_count=max_blogs)
     
-    # 2. 키워드 수집
+    if not blogs:
+        raise Exception("블로그 검색 결과 없음")
+    
+    print(f"\n   🔍 총 {len(blogs)}개 블로그 분석 중...")
+    
+    # 키워드 카운터
     all_keywords = []
-    menu_counter = Counter()
-    purpose_counter = Counter()
-    atmosphere_counter = Counter()
-    positive_count = 0
+    sentiments = []
+    visit_purposes = []
     
-    # 최대 100개만 분석 (속도 최적화)
-    analysis_limit = min(100, len(blogs))
-    
-    for blog in blogs[:analysis_limit]:
-        text = blog.get("title", "") + " " + blog.get("description", "")
-        keywords = extract_keywords(text)
+    for blog in blogs:
+        title = blog.get('title', '')
+        description = blog.get('description', '')
+        combined_text = title + " " + description
+        
+        # HTML 태그 제거
+        combined_text = re.sub(r'<[^>]+>', '', combined_text)
+        
+        # 키워드 추출
+        keywords = extract_keywords(combined_text)
         all_keywords.extend(keywords)
         
-        # 메뉴 추출 (간단한 패턴)
-        if "메뉴" in text or "추천" in text:
-            # 실제로는 더 정교한 NER 필요
-            pass
+        # 감정 분석
+        sentiment = analyze_sentiment(combined_text)
+        sentiments.append(sentiment)
         
-        # 방문 목적
-        if any(kw in text for kw in ["데이트", "연인", "커플"]):
-            purpose_counter["데이트"] += 1
-        if any(kw in text for kw in ["친구", "친목", "모임"]):
-            purpose_counter["친목"] += 1
-        if any(kw in text for kw in ["혼술", "혼자"]):
-            purpose_counter["혼술"] += 1
-        if any(kw in text for kw in ["회식", "단체", "팀"]):
-            purpose_counter["회식"] += 1
-        
-        # 분위기
-        if "시끄럽" in text:
-            atmosphere_counter["시끄러움"] += 1
-        if any(kw in text for kw in ["조용", "아늑"]):
-            atmosphere_counter["조용함"] += 1
-        if "넓" in text:
-            atmosphere_counter["넓음"] += 1
-        
-        # 긍정/부정
-        if any(kw in text for kw in ["좋", "맛있", "추천", "최고"]):
-            positive_count += 1
+        # 방문 목적 추출
+        if "데이트" in combined_text or "소개팅" in combined_text:
+            visit_purposes.append("데이트")
+        elif "회식" in combined_text or "단체" in combined_text:
+            visit_purposes.append("회식")
+        elif "혼술" in combined_text:
+            visit_purposes.append("혼술")
+        elif "친목" in combined_text or "친구" in combined_text:
+            visit_purposes.append("친목")
     
-    # 3. 컨셉 추출
-    keyword_freq = Counter(all_keywords)
+    # 통계 집계
+    keyword_counter = Counter(all_keywords)
+    purpose_counter = Counter(visit_purposes)
     
+    # 업종 추정
+    industry_candidates = ["요리주점", "술집", "카페", "이자카야", "바"]
+    industry = "일반"
+    for candidate in industry_candidates:
+        if keyword_counter.get(candidate, 0) > 0:
+            industry = candidate
+            break
+    
+    # 컨셉 추정
+    concept_candidates = ["헌팅포차", "데이트", "혼술집", "회식"]
     concept = "일반"
-    if keyword_freq.get("헌팅", 0) > 3:
-        concept = "헌팅포차"
-    elif keyword_freq.get("데이트", 0) > 5:
-        concept = "데이트 명소"
-    elif keyword_freq.get("혼술", 0) > 3:
-        concept = "혼술집"
+    for candidate in concept_candidates:
+        if keyword_counter.get(candidate, 0) > 2:
+            concept = candidate
+            break
     
-    # 4. 가격대 추출 (간단한 패턴)
-    price_range = "2-3만원대"  # 기본값
+    # 지역 추정 (간단 버전)
+    area = "미상"
+    area_keywords = ["건대", "홍대", "강남", "신촌", "이태원", "명동"]
+    for area_kw in area_keywords:
+        if any(area_kw in blog.get('title', '') + blog.get('description', '') for blog in blogs[:10]):
+            area = area_kw
+            break
     
-    # 5. 프로필 생성
+    # 긍정 비율
+    positive_count = sentiments.count("긍정")
+    positive_ratio = positive_count / len(sentiments) if sentiments else 0.0
+    
+    # 평균 평점 (간단 추정)
+    avg_rating = 3.0 + (positive_ratio * 2.0)  # 3.0 ~ 5.0
+    
+    # StoreProfile 생성
     profile = StoreProfile(
         name=store_name,
         industry=industry,
         area=area,
         concept=concept,
-        target_customers=["20대", "대학생"],  # 상권 기반 추정
-        signature_menus=menu_counter.most_common(3),
-        price_range=price_range,
-        atmosphere_keywords=[k for k, v in atmosphere_counter.most_common(3)],
+        target_customers=["20대", "대학생"],  # 간단 추정
+        signature_menus=[],
+        price_range="2-3만원대",
+        atmosphere_keywords=[kw for kw, _ in keyword_counter.most_common(5)],
         visit_purposes=dict(purpose_counter),
         peak_times=["금요일 저녁", "주말"],
-        foot_traffic="상" if "건대" in area or "홍대" in area else "중",
+        foot_traffic="중",
         competition_level="높음",
         total_blog_posts=len(blogs),
-        positive_ratio=positive_count / analysis_limit if analysis_limit > 0 else 0,
-        avg_rating=4.2  # 실제로는 별점 파싱 필요
+        positive_ratio=positive_ratio,
+        avg_rating=avg_rating
     )
     
-    print(f"   ✅ 프로필 생성 완료!")
-    print(f"      컨셉: {concept}")
-    print(f"      주요 방문 목적: {dict(purpose_counter.most_common(3))}")
+    print(f"   ✅ 분석 완료!")
+    print(f"      업종: {profile.industry}")
+    print(f"      컨셉: {profile.concept}")
     print(f"      긍정 비율: {profile.positive_ratio:.1%}")
     
     return profile
 
 
-# ==================== 메인 함수 ====================
-
-def analyze_store_from_blog(store_name: str) -> StoreProfile:
-    """
-    네이버 블로그에서 가게 분석
-    
-    Args:
-        store_name: 가게명
-    
-    Returns:
-        StoreProfile
-    """
-    print("="*60)
-    print(f"🔍 네이버 블로그 분석 시작: {store_name}")
-    print("="*60)
-    
-    # 1. 블로그 검색 (최대 200개, 중복 제거)
-    blogs = search_naver_blog(store_name, total_count=200)
-    
-    if not blogs:
-        print("❌ 블로그 검색 결과 없음")
-        return None
-    
-    print(f"📊 최종 수집: {len(blogs)}개 블로그")
-    
-    # 2. 가게 프로필 생성
-    profile = create_store_profile(store_name, blogs)
-    
-    return profile
-
-
-# ==================== 상권 분석 (보조) ====================
-
-def analyze_market_context(profile: StoreProfile) -> Dict:
-    """
-    상권 맥락 분석 (AI 보조)
-    
-    Args:
-        profile: 가게 프로필
-    
-    Returns:
-        상권 분석 결과
-    """
-    # 상권 특성 DB (간단한 룰 기반)
-    market_db = {
-        "건대": {
-            "type": "대학가",
-            "age": "20대 중심",
-            "peak": "학기중 > 방학",
-            "특징": "유동인구 많음, 경쟁 치열"
-        },
-        "홍대": {
-            "type": "젊음의거리",
-            "age": "20-30대",
-            "peak": "주말 저녁",
-            "특징": "트렌디, 높은 임대료"
-        },
-        "강남": {
-            "type": "비즈니스 + 유흥",
-            "age": "30대 중심",
-            "peak": "평일 저녁",
-            "특징": "고소득층, 고가격"
-        }
-    }
-    
-    context = market_db.get(profile.area, {
-        "type": "일반 상권",
-        "age": "다양",
-        "peak": "저녁 시간대",
-        "특징": "정보 부족"
-    })
-    
-    return {
-        "area": profile.area,
-        "industry": profile.industry,
-        "concept": profile.concept,
-        "market_type": context["type"],
-        "target_age": context["age"],
-        "peak_season": context["peak"],
-        "특징": context["특징"],
-        "경쟁강도": profile.competition_level,
-        "유동인구": profile.foot_traffic
-    }
-
-
-# ==================== 테스트 ====================
+# ==================== 메인 실행 ====================
 
 if __name__ == "__main__":
     # 테스트
-    store_name = "주다방 건대점"
+    store_name = input("가게 이름을 입력하세요: ").strip()
     
-    # 블로그 분석
-    profile = analyze_store_from_blog(store_name)
-    
-    if profile:
-        print("\n" + "="*60)
-        print("📊 분석 결과")
-        print("="*60)
-        print(f"가게명: {profile.name}")
-        print(f"업종: {profile.industry}")
-        print(f"상권: {profile.area}")
-        print(f"컨셉: {profile.concept}")
-        print(f"주요 고객: {', '.join(profile.target_customers)}")
-        print(f"분위기: {', '.join(profile.atmosphere_keywords)}")
-        print(f"방문 목적: {profile.visit_purposes}")
-        print(f"블로그 수: {profile.total_blog_posts}개")
-        print(f"긍정 비율: {profile.positive_ratio:.1%}")
-        
-        # 상권 분석
-        print("\n" + "="*60)
-        print("🗺️  상권 분석")
-        print("="*60)
-        market = analyze_market_context(profile)
-        for k, v in market.items():
-            print(f"   {k}: {v}")
+    if store_name:
+        profile = analyze_store_from_blog(store_name, max_blogs=500)
+        print(f"\n{'='*60}")
+        print(json.dumps(profile.__dict__, ensure_ascii=False, indent=2))
+        print(f"{'='*60}")

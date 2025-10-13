@@ -20,7 +20,6 @@ from review_preprocessor import (
 # 🔥 하이브리드 엔진 임포트 (변경!)
 from hybrid_insight_engine import generate_hybrid_report
 
-
 # ==================== 체크리스트 생성 ====================
 
 def generate_action_checklist(
@@ -278,7 +277,7 @@ async def run_master_analysis(store_name: str, address: str):
     # ==================== STEP 1: 블로그 분석 ====================
     
     print(f"\n{'='*60}")
-    print("📱 STEP 1: 네이버 블로그 분석 (200개)")
+    print("📱 STEP 1: 네이버 블로그 분석 (500개)")
     print(f"{'='*60}")
     
     blog_profile = None
