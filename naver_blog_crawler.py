@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# naver_blog_crawler.py - 네이버 블로그 크롤링 + 가게 분석
+# naver_blog_crawler.py - 네이버 블로그 크롤링 + 가게 분석 (200개 수집)
 
 import requests
 import json
@@ -64,38 +64,115 @@ class StoreProfile:
     avg_rating: float
 
 
-# ==================== 네이버 블로그 검색 ====================
+# ==================== 네이버 블로그 검색 (200개 수집) ====================
 
-def search_naver_blog(query: str, display: int = 100) -> List[Dict]:
+def search_naver_blog(query: str, total_count: int = 200) -> List[Dict]:
     """
-    네이버 블로그 검색 API
+    네이버 블로그 검색 API (최대 200개, 중복 제거)
     
     Args:
         query: 검색어 (가게명)
-        display: 결과 개수 (최대 100)
+        total_count: 가져올 총 개수 (기본 200개)
     
     Returns:
-        블로그 포스트 리스트
+        블로그 포스트 리스트 (중복 제거됨)
     """
     url = "https://openapi.naver.com/v1/search/blog.json"
     headers = {
         "X-Naver-Client-Id": NAVER_CLIENT_ID,
         "X-Naver-Client-Secret": NAVER_CLIENT_SECRET
     }
+    
+    all_blogs = []
+    seen_links = set()  # 중복 제거용
+    
+    # 1단계: 첫 요청으로 전체 개수 확인
     params = {
         "query": query,
-        "display": display,
-        "sort": "sim"  # 정확도순
+        "display": 1,
+        "sort": "sim"
     }
     
     try:
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get(url, headers=headers, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
-        return data.get("items", [])
+        available_total = data.get("total", 0)
+        
+        print(f"   📊 검색 결과: 총 {available_total:,}개 블로그 발견")
+        
+        # 실제 가져올 개수 결정 (최소값)
+        actual_count = min(total_count, available_total)
+        
+        if actual_count == 0:
+            print("   ❌ 검색 결과 없음")
+            return []
+        
+        print(f"   📥 수집 목표: {actual_count}개")
+        
     except Exception as e:
-        print(f"❌ 블로그 검색 실패: {e}")
+        print(f"❌ 초기 검색 실패: {e}")
         return []
+    
+    # 2단계: 100개씩 나눠서 요청
+    max_per_request = 100
+    requests_needed = (actual_count + max_per_request - 1) // max_per_request  # 올림
+    
+    for page in range(requests_needed):
+        start = page * max_per_request + 1
+        
+        # 남은 개수 계산
+        remaining = actual_count - len(all_blogs)
+        if remaining <= 0:
+            break
+        
+        # 이번 요청에서 가져올 개수
+        display = min(max_per_request, remaining)
+        
+        params = {
+            "query": query,
+            "display": display,
+            "start": start,
+            "sort": "sim"
+        }
+        
+        try:
+            print(f"   ⏳ 요청 {page + 1}/{requests_needed}: start={start}, display={display}")
+            
+            response = requests.get(url, headers=headers, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            items = data.get("items", [])
+            
+            # 중복 제거하면서 추가
+            new_count = 0
+            for item in items:
+                link = item.get("link", "")
+                if link and link not in seen_links:
+                    seen_links.add(link)
+                    all_blogs.append(item)
+                    new_count += 1
+                    
+                    # 목표 개수 도달하면 중단
+                    if len(all_blogs) >= actual_count:
+                        break
+            
+            print(f"      ✅ 수집: {new_count}개 (누적: {len(all_blogs)}/{actual_count}개)")
+            
+            # 목표 개수 도달하면 루프 종료
+            if len(all_blogs) >= actual_count:
+                break
+            
+            # API 요청 간격 (과부하 방지)
+            if page < requests_needed - 1:
+                time.sleep(0.1)
+                
+        except Exception as e:
+            print(f"   ⚠️  요청 {page + 1} 실패: {e}")
+            continue
+    
+    print(f"   ✅ 최종 수집: {len(all_blogs)}개 (중복 제거 완료)")
+    return all_blogs
 
 
 # ==================== 블로그 내용 크롤링 ====================
@@ -250,7 +327,10 @@ def create_store_profile(store_name: str, blogs: List[Dict]) -> StoreProfile:
     atmosphere_counter = Counter()
     positive_count = 0
     
-    for blog in blogs[:50]:  # 상위 50개만 분석
+    # 최대 100개만 분석 (속도 최적화)
+    analysis_limit = min(100, len(blogs))
+    
+    for blog in blogs[:analysis_limit]:
         text = blog.get("title", "") + " " + blog.get("description", "")
         keywords = extract_keywords(text)
         all_keywords.extend(keywords)
@@ -311,7 +391,7 @@ def create_store_profile(store_name: str, blogs: List[Dict]) -> StoreProfile:
         foot_traffic="상" if "건대" in area or "홍대" in area else "중",
         competition_level="높음",
         total_blog_posts=len(blogs),
-        positive_ratio=positive_count / len(blogs) if blogs else 0,
+        positive_ratio=positive_count / analysis_limit if analysis_limit > 0 else 0,
         avg_rating=4.2  # 실제로는 별점 파싱 필요
     )
     
@@ -339,14 +419,14 @@ def analyze_store_from_blog(store_name: str) -> StoreProfile:
     print(f"🔍 네이버 블로그 분석 시작: {store_name}")
     print("="*60)
     
-    # 1. 블로그 검색
-    blogs = search_naver_blog(store_name, display=100)
+    # 1. 블로그 검색 (최대 200개, 중복 제거)
+    blogs = search_naver_blog(store_name, total_count=200)
     
     if not blogs:
         print("❌ 블로그 검색 결과 없음")
         return None
     
-    print(f"📊 총 {len(blogs)}개 블로그 발견")
+    print(f"📊 최종 수집: {len(blogs)}개 블로그")
     
     # 2. 가게 프로필 생성
     profile = create_store_profile(store_name, blogs)

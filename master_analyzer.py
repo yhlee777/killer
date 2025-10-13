@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# master_analyzer.py - 블로그 + DB + 경쟁사 통합 분석 시스템
+# master_analyzer.py - 블로그 + DB + 경쟁사 통합 분석 시스템 (하이브리드 버전)
 
 import asyncio
 from datetime import datetime
@@ -17,21 +17,19 @@ from review_preprocessor import (
     generate_review_stats,
     compare_review_stats
 )
-from gpt_insight_engine import generate_insight_report
+# 🔥 하이브리드 엔진 임포트 (변경!)
+from hybrid_insight_engine import generate_hybrid_report
 
 
 # ==================== 체크리스트 생성 ====================
 
 def generate_action_checklist(
     blog_profile: Optional[StoreProfile],
-    insight_report: str,
+    insight_html: str,
     comparison_result: Dict
 ) -> str:
     """
     실행 가능한 체크리스트 생성
-    
-    블로그 분석 + GPT 인사이트 + 통계 비교를 종합하여
-    사장님이 바로 실행할 수 있는 체크리스트 생성
     """
     checklist = f"""
 # ✅ 실행 체크리스트 (2주 러닝)
@@ -91,58 +89,6 @@ def generate_action_checklist(
 
 """
     
-    # 4. 경쟁사 차별화
-    if comparison_result and '경쟁사의_약점_우리의_기회' in comparison_result:
-        opportunities = comparison_result['경쟁사의_약점_우리의_기회']
-        if opportunities:
-            checklist += """### 💡 4. 경쟁사 약점 공략 (차별화)
-
-"""
-            for topic, stats in list(opportunities.items())[:2]:
-                checklist += f"""**{topic}**
-- [ ] "{stats.get('interpretation', '')}" 메시지로 마케팅
-- [ ] 예시: "{stats.get('marketing_message', 'N/A')}"
-- [ ] 실행: 인스타 스토리, 네이버 플레이스 업데이트
-
-"""
-    
-    # 5. 경쟁사 벤치마킹
-    if comparison_result and '경쟁사의_강점_배울점' in comparison_result:
-        benchmarks = comparison_result['경쟁사의_강점_배울점']
-        if benchmarks:
-            checklist += """### 📚 5. 경쟁사 벤치마킹 (2주 파일럿)
-
-"""
-            for topic, stats in list(benchmarks.items())[:2]:
-                checklist += f"""**{topic}**
-- [ ] {stats.get('benchmark', '')}
-- [ ] 실행 계획: {stats.get('action_plan', '')}
-- [ ] 2주 테스트 후 효과 측정
-
-"""
-    
-    # 6. 블로그 기반 추가 항목
-    if blog_profile:
-        checklist += f"""---
-
-## 📝 블로그 분석 기반 추가 제안
-
-### 타겟 고객
-- 현재 블로그 주 고객층: {', '.join(blog_profile.target_customers)}
-- [ ] 이 고객층에 맞는 메뉴/서비스 강화
-
-### 분위기
-- 블로그에서 언급된 분위기: {', '.join(blog_profile.atmosphere_keywords[:3])}
-- [ ] 실제 매장 분위기가 블로그 이미지와 일치하는지 확인
-- [ ] 불일치 시 → 인테리어 소품 변경 또는 블로그 수정 요청
-
-### 피크 타임
-- 예상 피크: {', '.join(blog_profile.peak_times)}
-- [ ] 피크 타임 인력 배치 확인
-- [ ] 대기 시간 단축 방안 (셀프 워터, 사전 주문)
-
-"""
-    
     # 7. 측정 KPI
     checklist += """---
 
@@ -192,7 +138,7 @@ def generate_unified_report(
     store_name: str,
     blog_profile: Optional[StoreProfile],
     target_store: Dict,
-    insight_report: str,
+    insight_html: str,
     checklist: str
 ) -> str:
     """
@@ -261,13 +207,18 @@ def generate_unified_report(
 
 """
     
-    # Part 2: 네이버 플레이스 리뷰 분석 (GPT 인사이트)
+    # Part 2: HTML 리포트 링크
     report += f"""
 {'='*60}
-⭐ Part 2: 네이버 플레이스 리뷰 분석 (GPT 인사이트)
+⭐ Part 2: 시각화 리포트 (HTML)
 {'='*60}
 
-{insight_report}
+HTML 리포트가 생성되었습니다.
+브라우저로 열어서 차트를 확인하세요!
+
+📊 장점/단점 파이 차트
+🏆 경쟁사 비교
+✅ 2주 체크리스트
 
 """
     
@@ -311,12 +262,12 @@ def generate_unified_report(
 
 async def run_master_analysis(store_name: str, address: str):
     """
-    통합 분석 실행 (블로그 + 플레이스 + 경쟁사)
+    통합 분석 실행 (블로그 + 플레이스 + 경쟁사 + 하이브리드 AI)
     """
     print("""
 ╔══════════════════════════════════════════════════════════════╗
-║         🚀 통합 분석 시스템 v1.0                             ║
-║         블로그 + 플레이스 + 경쟁사 + 인사이트                ║
+║         🚀 통합 분석 시스템 v2.0 (하이브리드)                ║
+║         블로그 + 플레이스 + 경쟁사 + GPT + Claude           ║
 ╚══════════════════════════════════════════════════════════════╝
     """)
     
@@ -327,7 +278,7 @@ async def run_master_analysis(store_name: str, address: str):
     # ==================== STEP 1: 블로그 분석 ====================
     
     print(f"\n{'='*60}")
-    print("📱 STEP 1: 네이버 블로그 분석 (온라인 평판)")
+    print("📱 STEP 1: 네이버 블로그 분석 (200개)")
     print(f"{'='*60}")
     
     blog_profile = None
@@ -340,7 +291,7 @@ async def run_master_analysis(store_name: str, address: str):
     # ==================== STEP 2: 플레이스 크롤링 ====================
     
     print(f"\n{'='*60}")
-    print("⭐ STEP 2: 네이버 플레이스 크롤링")
+    print("⭐ STEP 2: 네이버 플레이스 크롤링 (200개)")
     print(f"{'='*60}")
     
     region_extracted = extract_dong_from_address(address)
@@ -423,21 +374,19 @@ async def run_master_analysis(store_name: str, address: str):
         comparison_result = compare_review_stats(our_stats, comp_stats_list)
         print(f"   ✅ 통계 비교 완료")
     
-    # ==================== STEP 5: GPT 인사이트 ====================
+    # ==================== STEP 5: 하이브리드 인사이트 (GPT + Claude) ====================
     
     print(f"\n{'='*60}")
-    print("🤖 STEP 5: GPT 인사이트 생성")
+    print("🤖 STEP 5: 하이브리드 AI 인사이트 (GPT + Claude)")
     print(f"{'='*60}")
     
-    insight_report = generate_insight_report(
+    # 🔥 async 함수 직접 호출!
+    insight_html = await generate_hybrid_report(
         target_store=target_store,
         target_reviews=unified_reviews,
         competitors=competitors,
         competitor_reviews=competitor_reviews,
-        months_filter=6,
-        analysis_type="advanced",
-        statistical_comparison=comparison_result,
-        search_strategy={'name': strategy_name, 'beta': beta, 'alpha': alpha}
+        statistical_comparison=comparison_result
     )
     
     # ==================== STEP 6: 체크리스트 생성 ====================
@@ -448,7 +397,7 @@ async def run_master_analysis(store_name: str, address: str):
     
     checklist = generate_action_checklist(
         blog_profile=blog_profile,
-        insight_report=insight_report,
+        insight_html=insight_html,
         comparison_result=comparison_result
     )
     
@@ -462,7 +411,7 @@ async def run_master_analysis(store_name: str, address: str):
         store_name=store_name,
         blog_profile=blog_profile,
         target_store=target_store,
-        insight_report=insight_report,
+        insight_html=insight_html,
         checklist=checklist
     )
     
@@ -485,6 +434,7 @@ async def run_master_analysis(store_name: str, address: str):
     print("""
 ╔══════════════════════════════════════════════════════════════╗
 ║                  ✅ 분석 완료!                               ║
+║                  📊 HTML 파일을 브라우저로 여세요!           ║
 ╚══════════════════════════════════════════════════════════════╝
     """)
 
@@ -494,8 +444,8 @@ async def run_master_analysis(store_name: str, address: str):
 async def main():
     print("""
 ╔══════════════════════════════════════════════════════════════╗
-║         🏪 맛집 통합 분석 시스템                             ║
-║         블로그 + 플레이스 + 경쟁사 + 인사이트                ║
+║         🏪 맛집 통합 분석 시스템 v2.0                        ║
+║         블로그 200개 + 리뷰 200개 + GPT + Claude            ║
 ╚══════════════════════════════════════════════════════════════╝
     """)
     

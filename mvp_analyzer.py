@@ -7,7 +7,7 @@ import re
 from datetime import datetime, timedelta
 from playwright.async_api import async_playwright
 
-from gpt_insight_engine import generate_insight_report
+from hybrid_insight_engine import generate_hybrid_report  # 🔥 변경됨
 from review_preprocessor import (
     generate_review_stats,
     compare_review_stats,
@@ -16,9 +16,9 @@ from review_preprocessor import (
 from competitor_search import find_competitors_smart, normalize_area
 
 DB_FILE = 'seoul_industry_reviews.db'
-TARGET_REVIEWS = 100
-SCROLL_DEPTH = 15
-MONTHS_FILTER = 6
+TARGET_REVIEWS = 150
+SCROLL_DEPTH = 20
+MONTHS_FILTER = 12
 
 
 # ==================== 블랙리스트 ====================
@@ -637,6 +637,24 @@ async def main():
     
     print(f"\n✅ 추출된 지역: {region_extracted}")
     
+    # 🔥 블로그 분석 선택 추가
+    blog_profile = None  # 기본값
+    do_blog = input("\n블로그 분석도 하시겠습니까? (y/N, 20초 소요): ").strip().lower()
+    
+    if do_blog == 'y':
+        try:
+            from naver_blog_crawler import analyze_store_from_blog
+            print(f"\n{'='*60}")
+            print(f"📱 블로그 분석 중...")
+            print(f"{'='*60}")
+            blog_profile = analyze_store_from_blog(store_input)
+            print(f"   ✅ 블로그 {blog_profile.total_blog_posts}개 분석 완료")
+            print(f"   긍정 비율: {blog_profile.positive_ratio:.1%}")
+        except Exception as e:
+            print(f"   ⚠️ 블로그 분석 실패 (스킵): {e}")
+    else:
+        print(f"   ⏭️  블로그 분석 스킵")
+    
     # 🎯 경쟁사 검색 전략 선택
     print(f"\n{'='*60}")
     print(f"🎯 경쟁사 검색 전략 선택")
@@ -725,7 +743,8 @@ async def main():
     for r in target_reviews:
         unified_reviews.append({
             'date': r.get('날짜', '날짜없음'),
-            'content': r.get('리뷰', '')
+            'content': r.get('리뷰', ''),
+            'rating': r.get('별점', 0)  # 🔥 rating 필드 추가
         })
     
     print(f"\n{'='*60}")
@@ -749,30 +768,25 @@ async def main():
         comparison_result = compare_review_stats(our_stats, comp_stats_list)
         print(f"   ✅ 통계 비교 완료")
     
-    report = generate_insight_report(
+    # 🔥 올인원 HTML 리포트 생성
+    from all_in_one_html import generate_all_in_one_report
+    
+    report = await generate_all_in_one_report(
         target_store=target_store,
         target_reviews=unified_reviews,
+        blog_profile=blog_profile,  # ✅ 이제 정의됨!
         competitors=competitors,
         competitor_reviews=competitor_reviews,
-        months_filter=MONTHS_FILTER,
-        analysis_type="advanced",
-        statistical_comparison=comparison_result,
-        search_strategy={'name': strategy_name, 'beta': beta, 'alpha': alpha}
+        statistical_comparison=comparison_result
     )
     
-    print("\n" + "="*60)
-    print(report)
-    print("="*60)
-    
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"report_{target_store['name'].replace(' ', '_')}_{timestamp}.md"
-    
-    try:
-        with open(filename, 'w', encoding='utf-8') as f:
-            f.write(report)
-        print(f"\n💾 리포트 저장: {filename}")
-    except:
-        pass
+    if report:
+        print("\n" + "="*60)
+        print("✅ 올인원 HTML 리포트 생성 완료!")
+        print(f"💡 브라우저로 열어서 확인하세요!")
+        print("="*60)
+    else:
+        print("\n❌ 리포트 생성 실패")
     
     print("""
 ╔══════════════════════════════════════════════════════╗

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>아쿠아산타 리뷰 분석</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        h1 { margin: 0; }
+        .meta { opacity: 0.9; margin-top: 10px; }
+        .section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .chart-container {
+            max-width: 500px;
+            margin: 20px auto;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            padding: 10px;
+            margin: 8px 0;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+        .checklist li {
+            border-left-color: #28a745;
+        }
+        .checklist input {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        h3 {
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏪 아쿠아산타 리뷰 분석</h1>
+        <div class="meta">
+            📅 2025-10-13 18:34 | 📍 성수동 | 🍽️ 카페
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>✅ 우리 가게 장점</h2>
+        <div class="chart-container">
+            <canvas id="strengths-chart"></canvas>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>⚠️ 우리 가게 단점</h2>
+        
+        <div class="weakness-list">
+            <h3>📉 단점</h3>
+            <ul>
+        <li>품절 발생 (1건, 2%)</li>
+            </ul>
+        </div>
+        
+    </div>
+
+    <div class="section">
+        <h2>🏆 경쟁사 비교</h2>
+        <div class="grid">
+            <div>
+                <h3>📚 경쟁사 강점 (배울 점)</h3>
+                <ul>
+                    <li>다양한 메뉴 구성 (찹쌀떡 5종, 싱글오리진 등 특화 메뉴)</li><li>예약 시스템 활용 (웨스턴챕터 - 홀케이크 즉시 구매 가능)</li><li>포장 퀄리티 차별화 (한정선 - 고급 포장으로 가격 정당화)</li>
+                </ul>
+            </div>
+            <div>
+                <h3>💡 경쟁사 약점 (우리 강조)</h3>
+                <ul>
+                    <li>높은 가격대 불만 (한정선 - 떡 하나에 4,500~6,500원)</li><li>재고 관리 미흡 (한정선 - 멜론 품절)</li><li>테이크아웃 전용 불편 (한정선 - 매장 이용 불가)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>✅ 2주 체크리스트</h2>
+        <ul class="checklist">
+            <li><input type="checkbox"> 인기 메뉴(두바이 아이스크림, 아인슈페너) 일일 재고 20개 이상 확보</li><li><input type="checkbox"> 품절 메뉴 0건 달성 (매일 오후 3시 재고 체크)</li><li><input type="checkbox"> 네이버 리뷰 '바로 입장' 키워드 주 5건 이상 유지</li><li><input type="checkbox"> 케이크 예약 시스템 도입 여부 검토 (1주 내)</li><li><input type="checkbox"> 디저트+음료 세트 메뉴 3종 개발 (2주 내)</li><li><input type="checkbox"> 인스타그램 '대기 없음' 스토리 매일 2회 업로드</li><li><input type="checkbox"> 직원 친절 교육 월 1회 실시 (현재 6% → 목표 15%)</li>
+        </ul>
+    </div>
+
+    <script>
+        // 장점 파이 차트
+        const strengthsCtx = document.getElementById('strengths-chart').getContext('2d');
+        new Chart(strengthsCtx, {
+            type: 'pie',
+            data: {
+                labels: ["\uc785\uc7a5 \ub300\uae30 \uc2dc\uac04", "\ub9db", "\ubd84\uc704\uae30", "\uc9c1\uc6d0 \uce5c\uc808"],
+                datasets: [{
+                    data: [70, 30, 14, 6],
+                    backgroundColor: [
+                        '#667eea', '#764ba2', '#f093fb', '#4facfe',
+                        '#43e97b', '#fa709a', '#fee140', '#30cfd0'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    title: {
+                        display: true,
+                        text: '장점 분포 (%)',
+                        font: { size: 16 }
+                    }
+                }
+            }
+        });
+
+        
+        
+    </script>
+</body>
+</html>
