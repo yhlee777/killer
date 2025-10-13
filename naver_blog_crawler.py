@@ -13,8 +13,8 @@ from datetime import datetime
 
 # ==================== 네이버 API 설정 ====================
 
-NAVER_CLIENT_ID = "YOUR_CLIENT_ID"  # 네이버 개발자센터에서 발급
-NAVER_CLIENT_SECRET = "YOUR_CLIENT_SECRET"
+NAVER_CLIENT_ID = "ZLPHHehmKYVHcF2hUGhQ"  # 네이버 개발자센터에서 발급
+NAVER_CLIENT_SECRET = "NrVaQLeDfV"
 
 
 # ==================== 데이터 클래스 ====================

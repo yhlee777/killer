@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# gpt_insight_engine.py - GPT 기반 인사이트 생성 (실전 인사이트 강화 + 완전 개선판)
+# gpt_insight_engine.py - GPT 기반 인사이트 생성 (실전 인사이트 강화 + 사장님 버전)
 
 import os
 import json
@@ -11,6 +11,133 @@ if not api_key:
     raise ValueError("⚠️ OPENAI_API_KEY 환경변수가 설정되지 않았습니다!")
 
 client = OpenAI(api_key=api_key)
+
+
+# ==================== 사장님용 간소화 리포트 ====================
+
+def generate_simplified_report(json_result, target_store, target_reviews, competitors):
+    """
+    사장님용 간소화 리포트 (A4 2-3장)
+    """
+    timestamp = datetime.now().strftime('%Y년 %m월 %d일')
+    
+    md = f"""# 🏪 {target_store['name']} - 꼭 알아야 할 것
+
+**분석일**: {timestamp} | **리뷰**: {len(target_reviews)}개 | **경쟁사**: {len(competitors)}개
+
+---
+
+## 🎯 꼭 알아야 할 것 TOP 3
+
+"""
+    
+    # TOP 3 (번호 + 이모지 + 한 줄)
+    priorities = json_result.get('summary', {}).get('top_priorities', [])[:3]
+    
+    if not priorities:
+        md += "✅ 현재 큰 문제 없음\n\n"
+    else:
+        for i, priority in enumerate(priorities, 1):
+            # 복잡한 표현 제거
+            simple = priority.replace('(2주 내 실행)', '').replace('(즉시)', '').strip()
+            md += f"{i}. {simple}\n"
+    
+    md += f"\n💡 **한 줄 평가**: {json_result.get('summary', {}).get('overall_assessment', '')}\n\n"
+    
+    # ==================== 1. 고쳐야 할 것 ====================
+    md += f"\n---\n\n## 🔧 고쳐야 할 것 (급한 순)\n\n"
+    
+    weaknesses = json_result.get('우리의_약점', [])
+    
+    if not weaknesses or (len(weaknesses) == 1 and weaknesses[0].get('aspect') == '없음'):
+        md += f"✨ **없습니다!** 고객 만족도가 높습니다.\n\n"
+    else:
+        for i, weakness in enumerate(weaknesses[:3], 1):  # 상위 3개만
+            aspect = weakness.get('aspect', '항목')
+            desc = weakness.get('description', '')
+            
+            # 통계 제거, 쉽게 표현
+            md += f"### {i}. {aspect}\n\n"
+            md += f"**문제**: {desc}\n\n"
+            
+            # 리뷰 1개만
+            if weakness.get('sample_reviews'):
+                review = weakness['sample_reviews'][0]
+                # 리뷰 번호 제거
+                clean_review = review.replace('[리뷰#', '').split(']', 1)[-1].strip() if '[리뷰#' in review else review
+                md += f"**고객 의견**: \"{clean_review}\"\n\n"
+            
+            # 해결책 간단히
+            if weakness.get('action'):
+                action = weakness['action']
+                md += f"**해결책**: {action.get('how', '')}\n"
+                md += f"**비용**: {action.get('cost', '미정')} | **기간**: {action.get('timeline', '2주')}\n\n"
+    
+    # ==================== 2. 잘하고 있는 것 ====================
+    md += f"---\n\n## ✨ 잘하고 있는 것\n\n"
+    
+    strengths = json_result.get('우리의_강점', [])
+    
+    if not strengths:
+        md += f"(데이터 부족)\n\n"
+    else:
+        for i, strength in enumerate(strengths[:3], 1):  # 상위 3개만
+            aspect = strength.get('aspect', '항목')
+            desc = strength.get('description', '')
+            
+            md += f"### {i}. {aspect}\n\n"
+            md += f"**강점**: {desc}\n\n"
+            
+            # 마케팅 팁만
+            if strength.get('marketing_tip'):
+                tip = strength['marketing_tip']
+                md += f"💡 **활용법**: {tip}\n\n"
+    
+    # ==================== 3. 경쟁사 비교 ====================
+    md += f"---\n\n## 🥊 경쟁사와 비교하면?\n\n"
+    
+    # 우리가 이기는 부분
+    comp_opps = json_result.get('경쟁사의_약점_우리의_기회', [])
+    if comp_opps:
+        md += f"### 👍 우리가 이기는 부분\n\n"
+        for opp in comp_opps[:2]:  # 2개만
+            aspect = opp.get('aspect', '항목')
+            opportunity = opp.get('opportunity', '')
+            md += f"- **{aspect}**: {opportunity}\n"
+        md += "\n"
+    
+    # 배워야 할 부분
+    comp_benchs = json_result.get('경쟁사의_강점_배울점', [])
+    if comp_benchs:
+        md += f"### 📚 경쟁사가 잘하는 것 (배울 점)\n\n"
+        for bench in comp_benchs[:2]:  # 2개만
+            aspect = bench.get('aspect', '항목')
+            action_plan = bench.get('action_plan', '')
+            # 너무 길면 축약
+            if len(action_plan) > 100:
+                action_plan = action_plan[:100] + "..."
+            md += f"- **{aspect}**: {action_plan}\n"
+        md += "\n"
+    
+    # ==================== 4. 경쟁사 목록 ====================
+    md += f"---\n\n## 📌 비교한 가게들\n\n"
+    for i, comp in enumerate(competitors[:5], 1):  # 5개만
+        # 간단히
+        comp_name = comp.name.split(',')[0]  # 카테고리 제거
+        md += f"{i}. {comp_name} ({comp.district}, 리뷰 {comp.review_count}개)\n"
+    
+    # ==================== 푸터 ====================
+    md += f"""
+---
+
+## 📎 참고사항
+
+- 이 리포트는 최근 6개월 리뷰를 분석한 결과입니다
+- 상세한 통계 데이터는 아래 '부록'을 참고하세요
+- 문의: 분석 시스템 개발팀
+"""
+    
+    return md
 
 
 class PromptTemplates:
@@ -476,38 +603,30 @@ class InsightAnalyzer:
 3. 리뷰를 요약하거나 의역하지 말고 원문 그대로!
 4. 리뷰 번호 [리뷰#N] 반드시 포함!
 5. 불확실하면 해당 항목을 제외!
-6. **경쟁사 분석(3번, 4번) 필수 작성!** - 경쟁사 리뷰가 제공되었으므로 반드시 분석하여 최소 1개 이상 작성
-7. **TOP3와 약점 섹션 일관성 필수!** - TOP3에 언급된 항목은 반드시 약점 섹션에 존재해야 함
+6. **경쟁사 분석(3번, 4번) 필수 작성!**
+7. **TOP3와 약점 섹션 일관성 필수!**
 
 **핵심 원칙**:
 1. 통계적 유의성(P-value) 필수 고려
-2. **통계 표기 형식 통일**: "우리 X.X%(n=N1) vs 경쟁사 Y.Y%(n=N2); GAP ±Z.Z%p; 95% CI [L, U]; P=0.XX 🟢"
-3. **신뢰 배지 사용**: 🟢(n 충분/CI 좁음/유의), 🟡(경계 P≈0.05~0.10), ⚪️(참고/표본 적음)
-4. **스케일 맞추기**: 비율(언급률%)로 비교, 최소 표본 n≥30
-5. **진실성 우선**: 
-   - 부정 리뷰 0개 → "전반적으로 양호" + 경쟁사 집중
-   - 부정 리뷰 1~2개 → 과장하지 말고 사실만 + 비율
-   - 부정 리뷰 3개 이상 → 명확한 약점 + 비율
-6. **9가지 검증된 인사이트 프레임워크 적용**:
-   - 대기/재방문/맛방향/시그니처/온도/피크타임/분위기/가격/벤치
-7. **실행 가능성 필터**: 사장님이 3개월 내 해결 가능한 것만
-   - ✅ 포함: 맛/서비스/가격/청결/메뉴/대기/재방문/온도
-   - ❌ 제외: 주차/건물크기/위치/소음(건물)/계단
+2. 통계 표기 형식 통일
+3. 신뢰 배지 사용
+4. 스케일 맞추기
+5. 진실성 우선
+6. 9가지 검증된 인사이트 프레임워크 적용
+7. 실행 가능성 필터
 8. 대기는 "낮을수록 좋음"
-9. 모든 주장에 증거 제시 (우리 X%(n=N1) vs 경쟁사 Y%(n=N2); GAP; CI; P; 배지; 샘플 1-2개)
-10. **실제 리뷰 원문만 인용 (절대 지어내지 말것!)**
-11. **리뷰 번호 [리뷰#N] 필수 포함!**
-12. 모든 액션에 **2주 타임라인 + 측정 가능한 KPI**
-13. **경쟁사 분석(3번, 4번)은 절대 생략 금지! 반드시 작성!**
+9. 모든 주장에 증거 제시
+10. 실제 리뷰 원문만 인용
+11. 리뷰 번호 필수
+12. 2주 타임라인 + KPI
+13. 경쟁사 분석 절대 생략 금지!
 
 **통계→결론 체인**:
 - 각 주장 옆에 (우리 X%(n=N1) vs 경쟁사 Y%(n=N2); GAP; CI; P; 배지; 샘플 1-2개) 필수
-- 예: "대기: 우리 0.0%(n=69) vs 경쟁사 1.6%(n=711); GAP -1.6%p; 95% CI [-3.0, -0.2]; P=0.03 🟢, 샘플: [리뷰#12] '바로 입장'"
 
 **할루시네이션 방지**:
 - 제공된 리뷰 목록에서만 인용
 - 없는 내용은 절대 만들지 말것
-- "~라는 내용" 같은 요약도 금지
 - 원문 그대로 복사만 허용
 - 리뷰 번호 없으면 무효!
 
@@ -538,7 +657,8 @@ class InsightAnalyzer:
 def generate_insight_report(target_store, target_reviews, competitors, 
                            competitor_reviews, months_filter=6, 
                            analysis_type="advanced", statistical_comparison=None,
-                           search_strategy=None):
+                           search_strategy=None,
+                           simplified=True):  # 🔥 새 옵션
     """인사이트 리포트 생성 (실전 인사이트 강화)"""
     from review_preprocessor import generate_review_stats, KEYWORD_DICT_BASE
     
@@ -659,12 +779,31 @@ def generate_insight_report(target_store, target_reviews, competitors,
         print(f"      2. max_tokens 부족 (현재: 8000)")
         print(f"      3. 프롬프트 구조 문제")
     
-    # 마크다운 변환
-    report = convert_to_markdown(result, target_store, target_reviews, competitors, search_strategy)
-    
-    print(f"   ✅ 분석 완료!")
-    
-    return report
+    # 🔥 두 가지 버전 생성
+    if simplified:
+        # 사장님 버전
+        simple_report = generate_simplified_report(
+            result, target_store, target_reviews, competitors
+        )
+        
+        # 전문가 버전 (부록)
+        detailed_report = convert_to_markdown(
+            result, target_store, target_reviews, competitors, search_strategy
+        )
+        
+        # 합치기
+        final_report = simple_report + "\n\n" + "="*60 + "\n\n"
+        final_report += "# 📊 부록: 상세 분석 데이터\n\n"
+        final_report += "(전문가용 - 통계적 근거 및 상세 분석)\n\n"
+        final_report += detailed_report
+        
+        print(f"   ✅ 사장님용 간소화 버전 생성 완료!")
+        return final_report
+    else:
+        # 전문가 버전만
+        return convert_to_markdown(
+            result, target_store, target_reviews, competitors, search_strategy
+        )
 
 
 def convert_to_markdown(json_result, target_store, target_reviews, competitors, search_strategy=None):

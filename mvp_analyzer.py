@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-# mvp_realtime_crawler.py - 실시간 크롤링 (블랙리스트 + 유사도 개선)
+# mvp_analyzer.py - 실시간 크롤링 (블랙리스트만 + 첫번째 선택)
 
 import asyncio
 import sqlite3
 import re
 from datetime import datetime, timedelta
 from playwright.async_api import async_playwright
-from difflib import SequenceMatcher
 
 from gpt_insight_engine import generate_insight_report
 from review_preprocessor import (
@@ -18,10 +17,11 @@ from competitor_search import find_competitors_smart, normalize_area
 
 DB_FILE = 'seoul_industry_reviews.db'
 TARGET_REVIEWS = 100
+SCROLL_DEPTH = 15
 MONTHS_FILTER = 6
 
 
-# ==================== 블랙리스트 + 유사도 ====================
+# ==================== 블랙리스트 ====================
 
 STORE_NAME_BLACKLIST = [
     "이미지수",
@@ -53,48 +53,19 @@ def is_blacklisted(store_name):
     return False
 
 
-def calculate_similarity(user_input, store_name):
-    """두 문자열의 유사도 계산 (0.0 ~ 1.0)"""
-    if not user_input or not store_name:
-        return 0.0
-    
-    def normalize(s):
-        s = s.lower()
-        s = re.sub(r'[^\w가-힣]', '', s)
-        return s
-    
-    user_norm = normalize(user_input)
-    store_norm = normalize(store_name)
-    
-    if not user_norm or not store_norm:
-        return 0.0
-    
-    # 기본 유사도
-    base_similarity = SequenceMatcher(None, user_norm, store_norm).ratio()
-    
-    # 보너스
-    bonus = 0.0
-    if user_norm in store_norm:
-        bonus += 0.2
-    if store_norm in user_norm:
-        bonus += 0.2
-    
-    common_chars = set(user_norm) & set(store_norm)
-    if common_chars:
-        common_ratio = len(common_chars) / max(len(set(user_norm)), len(set(store_norm)))
-        bonus += common_ratio * 0.1
-    
-    return min(base_similarity + bonus, 1.0)
-
-
 async def select_best_store(store_items, user_input, debug=True):
-    """가게 목록에서 최적의 가게 선택"""
+    """
+    가게 목록에서 최적의 가게 선택 (간소화 버전)
+    
+    블랙리스트 제거 후 첫 번째 가게 선택
+    """
     if not store_items:
-        return None, None, 0.0
+        return None, None
     
-    candidates = []
+    if debug:
+        print(f"\n   🔍 가게 선택 중... (블랙리스트 필터링)")
     
-    for item in store_items[:10]:
+    for idx, item in enumerate(store_items[:10], 1):
         try:
             text = await item.inner_text(timeout=500)
             if not text or not text.strip():
@@ -109,47 +80,25 @@ async def select_best_store(store_items, user_input, debug=True):
             # 블랙리스트 체크
             if is_blacklisted(store_name):
                 if debug:
-                    print(f"      ❌ 블랙리스트: {store_name}")
+                    print(f"      [{idx}] ❌ 블랙리스트: {store_name}")
                 continue
             
-            # 유사도 계산
-            similarity = calculate_similarity(user_input, store_name)
-            
-            candidates.append({
-                'item': item,
-                'name': store_name,
-                'similarity': similarity
-            })
-            
+            # 🔥 첫 번째 유효한 가게 선택!
             if debug:
-                print(f"      🔍 {store_name} → 유사도: {similarity:.3f}")
+                print(f"      [{idx}] ✅ 선택: {store_name}")
+            
+            return item, store_name
         
         except Exception as e:
             if debug:
-                print(f"      ⚠️  파싱 실패: {e}")
+                print(f"      [{idx}] ⚠️  파싱 실패: {e}")
             continue
     
-    if not candidates:
-        return None, None, 0.0
-    
-    # 유사도 정렬
-    candidates.sort(key=lambda x: x['similarity'], reverse=True)
-    best = candidates[0]
-    
+    # 모든 가게가 블랙리스트면 None
     if debug:
-        print(f"\n   ✅ 최적 매칭: {best['name']} (유사도: {best['similarity']:.3f})")
+        print(f"      ❌ 유효한 가게를 찾지 못했습니다")
     
-    # 유사도 경고
-    if best['similarity'] < 0.3:
-        if debug:
-            print(f"   ⚠️  유사도가 낮습니다 ({best['similarity']:.3f} < 0.3)")
-            print(f"   💡 사용자 입력: '{user_input}'")
-            print(f"   💡 찾은 가게: '{best['name']}'")
-            confirm = input("\n   계속 진행하시겠습니까? (y/n): ").strip().lower()
-            if confirm != 'y':
-                return None, None, 0.0
-    
-    return best['item'], best['name'], best['similarity']
+    return None, None
 
 
 # ==================== 업종 추출 (개선) ====================
@@ -342,7 +291,7 @@ async def expand_reviews(page):
 # ==================== 실시간 크롤링 ====================
 
 async def crawl_store_info(store_name, region_hint=None):
-    """네이버 플레이스 크롤링 (블랙리스트 + 유사도 개선)"""
+    """네이버 플레이스 크롤링 (블랙리스트 + 첫번째 선택)"""
     print(f"\n{'='*60}")
     print(f"🔍 STEP 1: '{store_name}' 실시간 크롤링")
     print(f"{'='*60}")
@@ -416,7 +365,6 @@ async def crawl_store_info(store_name, region_hint=None):
                             text = await item.inner_text(timeout=500)
                             if text and text.strip():
                                 valid_items.append(item)
-                                print(f"      └─ 텍스트: {text[:50]}...")
                         except:
                             pass
                     
@@ -434,9 +382,8 @@ async def crawl_store_info(store_name, region_hint=None):
                 await browser.close()
                 return None
             
-            # 🔥 블랙리스트 + 유사도 체크
-            print("\n   🎯 블랙리스트 + 유사도 체크...")
-            best_store, store_name_found, similarity = await select_best_store(
+            # 🔥 블랙리스트 필터 + 첫 번째 선택
+            best_store, store_name_found = await select_best_store(
                 store_items, 
                 store_name,
                 debug=True
