@@ -4,6 +4,7 @@
 import os
 import json
 import asyncio
+import re
 from datetime import datetime
 from openai import OpenAI
 from anthropic import Anthropic
@@ -11,6 +12,103 @@ from anthropic import Anthropic
 # API 클라이언트
 openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 anthropic_client = Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+
+
+# ==================== 🔥 NEW: 리뷰 인용 검증 ====================
+
+def verify_review_citations(claude_result, original_reviews):
+    """
+    Claude가 인용한 리뷰가 실제로 존재하는지 검증
+    
+    Args:
+        claude_result: Claude가 생성한 JSON 결과
+        original_reviews: 원본 리뷰 리스트
+    
+    Returns:
+        bool: 검증 통과 여부
+    """
+    print(f"\n{'='*60}")
+    print(f"🔍 리뷰 인용 검증 중...")
+    print(f"{'='*60}")
+    
+    issues = []
+    
+    # 원본 리뷰 매핑 (번호 → 내용)
+    review_map = {}
+    for i, r in enumerate(original_reviews[:70], 1):
+        review_map[i] = r['content'][:200]  # 처음 200자
+    
+    # Claude 결과에서 인용된 리뷰 찾기
+    sections = [
+        ('우리_장점_파이', '장점'),
+        ('우리_단점', '단점'),
+        ('경쟁사_강점', '경쟁사 강점'),
+        ('경쟁사_약점', '경쟁사 약점')
+    ]
+    
+    for section_key, section_name in sections:
+        section_data = claude_result.get(section_key, {})
+        
+        if not section_data:
+            continue
+        
+        # JSON 문자열로 변환 후 패턴 매칭
+        section_str = str(section_data)
+        
+        # [리뷰#N] 패턴 찾기
+        pattern = r'\[리뷰#(\d+)\]([^\[]{10,150})'
+        matches = re.findall(pattern, section_str)
+        
+        for review_num, cited_text in matches:
+            review_num = int(review_num)
+            
+            # 리뷰 번호가 범위를 벗어남
+            if review_num not in review_map:
+                issues.append({
+                    'section': section_name,
+                    'type': '범위초과',
+                    'review_num': review_num,
+                    'cited': cited_text[:50]
+                })
+                continue
+            
+            # 원본과 비교 (유사도 체크)
+            original = review_map[review_num]
+            cited_clean = cited_text.strip()
+            
+            # 간단한 유사도: 공통 단어 비율
+            original_words = set(original.split())
+            cited_words = set(cited_clean.split())
+            
+            if len(cited_words) == 0:
+                continue
+            
+            similarity = len(original_words & cited_words) / len(cited_words)
+            
+            if similarity < 0.3:  # 30% 미만 일치
+                issues.append({
+                    'section': section_name,
+                    'type': '불일치',
+                    'review_num': review_num,
+                    'cited': cited_clean[:50],
+                    'original': original[:50],
+                    'similarity': f"{similarity:.1%}"
+                })
+    
+    # 검증 결과 출력
+    if not issues:
+        print("   ✅ 모든 리뷰 인용 검증 완료! (문제 없음)")
+        return True
+    else:
+        print(f"   ⚠️  {len(issues)}개 문제 발견:")
+        for issue in issues[:5]:  # 상위 5개만
+            print(f"      [{issue['section']}] 리뷰#{issue['review_num']}: {issue['type']}")
+            if issue['type'] == '불일치':
+                print(f"         인용: {issue['cited']}...")
+                print(f"         원본: {issue['original']}...")
+        
+        print(f"\n   💡 일부 인용이 정확하지 않을 수 있습니다 (계속 진행)")
+        return False
 
 
 # ==================== STEP 1: GPT-4o 전처리 (10초) ====================
@@ -469,6 +567,13 @@ async def generate_hybrid_report(target_store, target_reviews, competitors,
     
     if not claude_result:
         return None
+    
+    # 🔥 NEW: STEP 2.5: 리뷰 인용 검증
+    verification_passed = verify_review_citations(claude_result, target_reviews)
+    
+    if not verification_passed:
+        print("\n⚠️  일부 리뷰 인용이 정확하지 않을 수 있습니다.")
+        print("💡 대부분의 인사이트는 유효하므로 계속 진행합니다.")
     
     # STEP 3: 시각화 리포트
     print(f"\n{'='*60}")

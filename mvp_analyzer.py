@@ -468,28 +468,57 @@ async def crawl_store_info(store_name, region_hint=None):
             except:
                 print("   ⚠️  최신순 버튼을 찾지 못했습니다.")
             
-            # 7. 스크롤 & 리뷰 수집
+            # 🔥 7. 스크롤 & 리뷰 수집 (개선된 로직!)
             print("   ⏬ 스크롤 중...")
-            for i in range(30):
+            
+            max_scrolls = 40  # 30 → 40 증가
+            scroll_patience = 3  # 3번 연속 증가 없으면 중단
+            
+            last_count = 0
+            no_increase_streak = 0
+            
+            for i in range(max_scrolls):
                 try:
+                    # 스크롤
                     await page.evaluate("window.scrollBy(0, 2000)")
                 except:
                     pass
-                await asyncio.sleep(0.3)
+                
+                await asyncio.sleep(0.4)  # 0.3 → 0.4 (여유 시간)
                 await expand_reviews(page)
                 
-                if i % 10 == 0:
+                # 5번마다 체크 (10번 → 5번, 더 자주 체크)
+                if i % 5 == 0:
                     count = 0
                     for sel in ["li.place_apply_pui", "li.pui__X35jYm"]:
                         try:
                             count = await page.locator(sel).count()
-                            if count >= TARGET_REVIEWS:
-                                print(f"   ✅ {count}개 발견, 수집 중단")
+                            if count > 0:
                                 break
                         except:
                             pass
-                    if count >= TARGET_REVIEWS:
+                    
+                    # 진행 상황 출력
+                    if count > last_count:
+                        print(f"      [{i:2d}회] {count}개 발견 (+{count - last_count})")
+                        no_increase_streak = 0  # 리셋
+                    else:
+                        no_increase_streak += 1
+                        print(f"      [{i:2d}회] {count}개 (증가 없음 {no_increase_streak}/{scroll_patience})")
+                    
+                    last_count = count
+                    
+                    # 목표 달성하고 + 여유분 20개 더
+                    if count >= TARGET_REVIEWS + 20:
+                        print(f"   ✅ {count}개 발견 (목표+여유), 수집 중단")
                         break
+                    
+                    # 연속으로 증가 없으면 중단 (끝까지 스크롤함)
+                    if no_increase_streak >= scroll_patience:
+                        print(f"   ⚠️  더 이상 리뷰가 없습니다 (최종: {count}개)")
+                        break
+            
+            print(f"   📊 DOM에서 발견된 리뷰: {last_count}개")
             
             # 8. 리뷰 파싱
             reviews = []
@@ -542,6 +571,12 @@ async def crawl_store_info(store_name, region_hint=None):
                     pass
             
             print(f"   ✅ 수집된 리뷰: {len(reviews)}개")
+            
+            # 🔥 수집 개수 확인!
+            if len(reviews) < TARGET_REVIEWS:
+                print(f"   ⚠️  목표({TARGET_REVIEWS}개)보다 적습니다!")
+                print(f"      원인: 사장님 답글, 짧은 리뷰, 파싱 실패 등")
+                print(f"      대책: 있는 만큼만 분석 진행")
             
             await context.close()
             await browser.close()
