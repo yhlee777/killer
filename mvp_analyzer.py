@@ -515,28 +515,73 @@ async def crawl_store_info(store_name, region_hint=None):
                 await browser.close()
                 return None
             
+            # 🔥 첫 번째 클릭
             await asyncio.sleep(1)
             await best_store.click(timeout=3000)
-            await asyncio.sleep(3)
+            print("   🖱️  첫 번째 클릭 완료")
+            await asyncio.sleep(2)
+            
+            # 🔥 두 번째 클릭 (상세 페이지로 진입)
+            await best_store.click(timeout=3000)
+            print("   🖱️  두 번째 클릭 완료")
+            await asyncio.sleep(5)
             
             # 4. place_id 추출
             place_id = None
+            # 🔥🔥🔥 디버깅 시작 🔥🔥🔥
+            print(f"\n   🔍 === 프레임 URL 디버깅 ===")
+            print(f"   📄 메인 페이지 URL: {page.url}")
+            print(f"   📊 총 프레임 수: {len(page.frames)}")
+            for i, frame in enumerate(page.frames):
+                print(f"   Frame [{i}]: {frame.url[:150]}")  # 처음 150자만
+            print(f"   🔍 === 디버깅 끝 ===\n")
+            # 🔥🔥🔥 디버깅 끝 🔥🔥🔥
+                        
+            # 🔥 수정: 다양한 패턴 시도
             for frame in page.frames:
-                match = re.search(r'place[/=](\d+)', frame.url)
+                url = frame.url
+                
+                # 패턴 1: place/숫자
+                match = re.search(r'place[/=](\d+)', url)
                 if match:
                     place_id = match.group(1)
+                    print(f"   ✅ place_id 발견 (place/): {place_id}")
                     break
-            
+                
+                # 패턴 2: id=숫자
+                match = re.search(r'[?&]id=(\d+)', url)
+                if match:
+                    place_id = match.group(1)
+                    print(f"   ✅ place_id 발견 (id=): {place_id}")
+                    break
+                
+                # 패턴 3: restaurant/숫자
+                match = re.search(r'restaurant[/=](\d+)', url)
+                if match:
+                    place_id = match.group(1)
+                    print(f"   ✅ place_id 발견 (restaurant/): {place_id}")
+                    break
+
+            # 🔥 추가: 못 찾으면 재시도
+            if not place_id:
+                print("   ⏳ place_id 못찾음, 5초 더 대기 후 재시도...")
+                await asyncio.sleep(5)
+                
+                for frame in page.frames:
+                    url = frame.url
+                    match = re.search(r'place[/=](\d+)|[?&]id=(\d+)|restaurant[/=](\d+)', url)
+                    if match:
+                        place_id = match.group(1) or match.group(2) or match.group(3)
+                        print(f"   ✅ place_id 발견 (재시도): {place_id}")
+                        break
+
             if not place_id:
                 print("   ❌ place_id를 찾을 수 없습니다.")
                 await context.close()
                 await browser.close()
                 return None
-            
-            print(f"\n   ✅ 가게명: {store_name} (사용자 입력)")
-            print(f"   ✅ 크롤링 가게명: {store_name_found}")
+
             print(f"   ✅ Place ID: {place_id}")
-            
             # 5. 상세 페이지로 이동
             detail_url = f"https://m.place.naver.com/restaurant/{place_id}/home"
             await page.goto(detail_url, wait_until="domcontentloaded", timeout=30000)
