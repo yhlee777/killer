@@ -632,7 +632,7 @@ def generate_visual_report(preprocessed, claude_result, target_store, competitor
                 
                 strategy_html += f"""
                             </div>
-                            <div class="stat">언급률: {item['our_weakness'].get('mention_rate', 0):.1f}%</div>
+                            <div class="stat">언급률: {float(item['our_weakness'].get('mention_rate', 0)):.1f}%</div>
                         </div>
                         
                         <div class="vs-divider">VS</div>
@@ -647,7 +647,7 @@ def generate_visual_report(preprocessed, claude_result, target_store, competitor
                 
                 strategy_html += f"""
                             </div>
-                            <div class="stat">언급률: {item['competitor_strength'].get('mention_rate', 0):.1f}%</div>
+                            <div class="stat">언급률: {float(item['competitor_strength'].get('mention_rate', 0)):.1f}%</div>
                         </div>
                     </div>
                     
@@ -685,7 +685,7 @@ def generate_visual_report(preprocessed, claude_result, target_store, competitor
                 
                 strategy_html += f"""
                             </div>
-                            <div class="stat">언급률: {item['our_strength'].get('mention_rate', 0):.1f}%</div>
+                            <div class="stat">언급률: {float(item['our_strength'].get('mention_rate', 0)):.1f}%</div>
                         </div>
                         
                         <div class="vs-divider">VS</div>
@@ -700,7 +700,7 @@ def generate_visual_report(preprocessed, claude_result, target_store, competitor
                 
                 strategy_html += f"""
                             </div>
-                            <div class="stat">언급률: {item['competitor_weakness'].get('mention_rate', 0):.1f}%</div>
+                            <div class="stat">언급률: {float(item['competitor_weakness'].get('mention_rate', 0)):.1f}%</div>
                         </div>
                     </div>
                     
@@ -779,7 +779,7 @@ def generate_visual_report(preprocessed, claude_result, target_store, competitor
                 
                 strategy_html += f"""
                         </div>
-                        <div class="stat">평균 언급률: {item['competitor_weakness'].get('mention_rate', 0):.1f}%</div>
+                        <div class="stat">평균 언급률: {float(item['competitor_weakness'].get('mention_rate', 0)):.1f}%</div>
                     </div>
                     
                     <div class="opportunity-box">

@@ -300,7 +300,7 @@ async def run_master_analysis(store_name: str, address: str):
     
     if not store_data:
         print("\n❌ 플레이스 크롤링 실패")
-        return
+        return False
     
     target_store = {
         'place_id': store_data['place_id'],
@@ -313,7 +313,7 @@ async def run_master_analysis(store_name: str, address: str):
     
     if not target_reviews:
         print("\n⚠️  리뷰 없음")
-        return
+        return False
     
     # 리뷰 형식 통일
     unified_reviews = []
@@ -437,7 +437,7 @@ async def run_master_analysis(store_name: str, address: str):
 ╚══════════════════════════════════════════════════════════════╝
     """)
 
-
+    return True
 # ==================== CLI 실행 ====================
 
 async def main():

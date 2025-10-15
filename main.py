@@ -43,8 +43,8 @@ jobs: Dict[str, Dict[str, Any]] = {}
 # 환경변수
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-SMTP_EMAIL = os.getenv("SMTP_EMAIL", "your-email@gmail.com")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "your-app-password")
+SMTP_EMAIL = os.getenv("SMTP_EMAIL", "friends292198@gmail.com")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "nqgpfqlpfuijioua ")
 
 # 🔥 네이버 API 키 (블로그 크롤러에서 재사용!)
 try:

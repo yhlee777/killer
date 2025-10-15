@@ -3,571 +3,472 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Review Intelligence - AI 리뷰 분석</title>
+    <title>맞춤형 마케팅 전략 분석</title>
     
-    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
-        .animate-spin {
-            animation: spin 1s linear infinite;
+        
+        /* HubSpot 오렌지 */
+        .hubspot-orange { color: #FF7A59; }
+        .hubspot-orange-bg { background-color: #FF7A59; }
+        .hubspot-orange-light { background-color: #FFF5F3; }
+        .hubspot-orange-border { border-color: #FF7A59; }
+        
+        /* 라디오 버튼 */
+        .radio-option input[type="radio"] {
+            display: none;
+        }
+        .radio-option input[type="radio"]:checked + label {
+            border-color: #FF7A59;
+            background-color: #FFF5F3;
+            box-shadow: 0 0 0 3px rgba(255, 122, 89, 0.1);
+            transform: translateY(-1px);
+        }
+        .radio-option input[type="radio"]:checked + label .check-icon {
+            display: flex;
+            animation: scaleIn 0.2s ease-out;
+        }
+        .radio-option label:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        @keyframes scaleIn {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+        }
+        
+        /* 그라데이션 배지 */
+        .gradient-badge {
+            background: linear-gradient(135deg, #FF7A59 0%, #FF9472 100%);
+        }
+        
+        /* 부드러운 애니메이션 */
+        .fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-50">
     <div id="root"></div>
     
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState } = React;
         const API_BASE_URL = 'http://localhost:8000';
 
-        function ReviewIntelligenceApp() {
+        function App() {
+            const [step, setStep] = useState(1);
+            const [questionIndex, setQuestionIndex] = useState(0);
+            const [answers, setAnswers] = useState({});
             const [storeName, setStoreName] = useState('');
-            const [selectedStoreInfo, setSelectedStoreInfo] = useState(null); // 🔥 선택한 가게 전체 정보
             const [region, setRegion] = useState('');
             const [email, setEmail] = useState('');
-            const [status, setStatus] = useState('idle');
-            const [message, setMessage] = useState('');
-            const [progress, setProgress] = useState('');
-            
-            // 🔍 자동완성 관련 state
-            const [suggestions, setSuggestions] = useState([]);
-            const [showSuggestions, setShowSuggestions] = useState(false);
-            const [isSearching, setIsSearching] = useState(false);
-            const [isSelected, setIsSelected] = useState(false); // 🔥 확정 플래그
-            const searchTimerRef = useRef(null);
-            const dropdownRef = useRef(null);
+            const [progress, setProgress] = useState(0);
 
-            // 🔍 자동완성 검색
-            useEffect(() => {
-                // 🔥 선택된 상태면 검색 안 함
-                if (isSelected) {
-                    return;
-                }
-
-                const query = storeName.trim();
-
-                // 2글자 미만이면 드롭다운 숨김
-                if (query.length < 2) {
-                    setSuggestions([]);
-                    setShowSuggestions(false);
-                    return;
-                }
-
-                // Debounce: 300ms 대기
-                if (searchTimerRef.current) {
-                    clearTimeout(searchTimerRef.current);
-                }
-
-                searchTimerRef.current = setTimeout(async () => {
-                    setIsSearching(true);
-                    try {
-                        const response = await fetch(
-                            `${API_BASE_URL}/api/search-stores?q=${encodeURIComponent(query)}&region=${encodeURIComponent(region)}`
-                        );
-                        const data = await response.json();
-                        
-                        if (data.results && data.results.length > 0) {
-                            setSuggestions(data.results);
-                            setShowSuggestions(true);
-                        } else {
-                            setSuggestions([]);
-                            setShowSuggestions(false);
-                        }
-                    } catch (error) {
-                        console.error('검색 실패:', error);
-                        setSuggestions([]);
-                    } finally {
-                        setIsSearching(false);
-                    }
-                }, 300);
-            }, [storeName, region, isSelected]); // 🔥 isSelected 의존성 추가
-
-            // 드롭다운 외부 클릭 감지
-            useEffect(() => {
-                const handleClickOutside = (event) => {
-                    if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                        setShowSuggestions(false);
-                    }
-                };
-                document.addEventListener('mousedown', handleClickOutside);
-                return () => document.removeEventListener('mousedown', handleClickOutside);
-            }, []);
-
-            const handleSelectStore = (store) => {
-                // 🔥 타이머 취소
-                if (searchTimerRef.current) {
-                    clearTimeout(searchTimerRef.current);
-                }
+            // 12개 질문
+            const questions = [
+                // 가게 특성 (4)
+                { id: 'industry', section: '가게 특성', q: '업종은?', opts: [
+                    { v: 'cafe', l: '카페/디저트' },
+                    { v: 'korean', l: '한식' },
+                    { v: 'japanese', l: '일식' },
+                    { v: 'western', l: '양식' },
+                    { v: 'bar', l: '술집/바' },
+                    { v: 'other', l: '기타' }
+                ]},
+                { id: 'price', section: '가게 특성', q: '객단가는?', opts: [
+                    { v: 'verylow', l: '1만원 이하' },
+                    { v: 'low', l: '1-2만원' },
+                    { v: 'mid', l: '2-5만원' },
+                    { v: 'high', l: '5-10만원' },
+                    { v: 'premium', l: '10만원 이상' }
+                ]},
+                { id: 'diff', section: '가게 특성', q: '가장 강한 차별화 요소는?', opts: [
+                    { v: 'taste', l: '맛/품질' },
+                    { v: 'atmosphere', l: '분위기/인테리어' },
+                    { v: 'value', l: '가성비' },
+                    { v: 'concept', l: '독특한 컨셉' },
+                    { v: 'location', l: '위치/접근성' }
+                ]},
+                { id: 'age', section: '가게 특성', q: '오픈한 지 얼마나 됐나요?', opts: [
+                    { v: '0-6', l: '6개월 미만' },
+                    { v: '6-24', l: '6개월~2년' },
+                    { v: '24+', l: '2년 이상' }
+                ]},
                 
-                // 선택한 가게 이름 설정
-                setStoreName(store.name);
+                // 사장님 선호도 (4)
+                { id: 'budget', section: '사장님 선호도', q: '월 마케팅 예산은?', opts: [
+                    { v: '0', l: '0원 (무료만)' },
+                    { v: '10-50', l: '10-50만원' },
+                    { v: '50-200', l: '50-200만원' },
+                    { v: '200+', l: '200만원 이상' }
+                ]},
+                { id: 'time', section: '사장님 선호도', q: '주간 마케팅 투입 시간은?', opts: [
+                    { v: 'passive', l: '주 1시간 미만' },
+                    { v: 'moderate', l: '주 3-5시간' },
+                    { v: 'active', l: '매일 관리 가능' }
+                ]},
+                { id: 'skill', section: '사장님 선호도', q: '디지털 마케팅 역량은?', opts: [
+                    { v: 'beginner', l: '초보 (스마트폰만)' },
+                    { v: 'intermediate', l: '중급 (PC 활용)' },
+                    { v: 'advanced', l: '고급 (분석 가능)' }
+                ]},
+                { id: 'goal', section: '사장님 선호도', q: '마케팅 목표는?', opts: [
+                    { v: 'survive', l: '생존/손익분기' },
+                    { v: 'stable', l: '안정적 성장' },
+                    { v: 'rapid', l: '빠른 확장' }
+                ]},
                 
-                // 🔥 가게 전체 정보 저장 (주소, 카테고리 포함!)
-                setSelectedStoreInfo(store);
+                // 상권 특징 (4)
+                { id: 'area', section: '상권 특징', q: '가게 위치는?', opts: [
+                    { v: 'gangnam', l: '강남/청담/압구정' },
+                    { v: 'hongdae', l: '홍대/이태원/성수' },
+                    { v: 'residential', l: '주거지' },
+                    { v: 'office', l: '오피스 상권' },
+                    { v: 'other', l: '기타' }
+                ]},
+                { id: 'competition', section: '상권 특징', q: '경쟁 강도는?', opts: [
+                    { v: 'high', l: '높음 (5개 이상)' },
+                    { v: 'medium', l: '중간 (2-4개)' },
+                    { v: 'low', l: '낮음 (1개 이하)' }
+                ]},
+                { id: 'traffic', section: '상권 특징', q: '유동인구는?', opts: [
+                    { v: 'high', l: '많음 (역세권)' },
+                    { v: 'medium', l: '보통' },
+                    { v: 'low', l: '적음 (주택가)' }
+                ]},
+                { id: 'customer', section: '상권 특징', q: '주요 고객층은?', opts: [
+                    { v: '20s', l: '20대' },
+                    { v: '30s', l: '30대' },
+                    { v: '40s+', l: '40대 이상' },
+                    { v: 'student', l: '학생' },
+                    { v: 'office', l: '직장인' }
+                ]},
+            ];
+
+            const currentQ = questions[questionIndex];
+            const totalProgress = ((questionIndex + 1) / questions.length) * 100;
+
+            const handleAnswer = (value) => {
+                setAnswers({ ...answers, [currentQ.id]: value });
                 
-                // 🔥 확정 상태로 변경
-                setIsSelected(true);
-                
-                // 드롭다운 닫기
-                setShowSuggestions(false);
-                setSuggestions([]);
-                setIsSearching(false);
+                if (questionIndex < questions.length - 1) {
+                    setTimeout(() => setQuestionIndex(questionIndex + 1), 200);
+                } else {
+                    setTimeout(() => setStep(2), 200);
+                }
             };
 
-            const handleAnalyze = async () => {
-                if (!storeName.trim()) {
-                    setStatus('error');
-                    setMessage('가게 이름을 입력해주세요');
+            const startAnalysis = async () => {
+                if (!storeName.trim() || !email.trim()) {
+                    alert('모든 항목을 입력해주세요');
                     return;
                 }
-
-                if (!email.trim()) {
-                    setStatus('error');
-                    setMessage('이메일을 입력해주세요');
-                    return;
-                }
-
-                if (!email.includes('@')) {
-                    setStatus('error');
-                    setMessage('올바른 이메일 형식이 아닙니다');
-                    return;
-                }
-
-                setStatus('loading');
-                setMessage('분석을 시작합니다...');
-                setProgress('');
-
+                setStep(3);
+                
                 try {
-                    const response = await fetch(`${API_BASE_URL}/api/analyze`, {
+                    // 진행률 시뮬레이션
+                    const interval = setInterval(() => {
+                        setProgress(p => {
+                            if (p >= 100) {
+                                clearInterval(interval);
+                                setTimeout(() => setStep(4), 500);
+                                return 100;
+                            }
+                            return p + 2;
+                        });
+                    }, 300);
+
+                    // 실제 API 호출 (주석 처리)
+                    /*
+                    const collectResponse = await fetch(`${API_BASE_URL}/api/collect-reviews`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ store_name: storeName, region })
+                    });
+                    const collectData = await collectResponse.json();
+                    
+                    const strategyResponse = await fetch(`${API_BASE_URL}/api/generate-strategy`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
+                            owner_profile: answers,
+                            reviews: collectData.reviews,
                             store_name: storeName,
-                            email: email,
-                            // 🔥 선택한 가게의 상세 정보 전달!
-                            store_info: selectedStoreInfo ? {
-                                name: selectedStoreInfo.name,
-                                address: selectedStoreInfo.address,
-                                category: selectedStoreInfo.category
-                            } : null
+                            email: email
                         })
                     });
-
-                    if (!response.ok) {
-                        throw new Error('서버 오류');
-                    }
-
-                    const data = await response.json();
-                    const jobId = data.job_id;
-
-                    let attempts = 0;
-                    const maxAttempts = 120;
-
-                    const checkStatus = async () => {
-                        try {
-                            const statusResponse = await fetch(`${API_BASE_URL}/api/job/${jobId}`);
-                            
-                            if (statusResponse.ok) {
-                                const statusData = await statusResponse.json();
-                                
-                                if (statusData.status === 'processing') {
-                                    setProgress(statusData.progress || '분석 중...');
-                                    
-                                    if (attempts < maxAttempts) {
-                                        attempts++;
-                                        setTimeout(checkStatus, 5000);
-                                    } else {
-                                        setStatus('error');
-                                        setMessage('시간 초과되었습니다. 다시 시도해주세요.');
-                                    }
-                                } else if (statusData.status === 'completed') {
-                                    setStatus('success');
-                                    setMessage(`분석 완료! ${email}로 리포트를 전송했습니다. 이메일을 확인하세요!`);
-                                    setProgress('');
-                                } else if (statusData.status === 'failed') {
-                                    setStatus('error');
-                                    setMessage(statusData.error || '분석에 실패했습니다');
-                                    setProgress('');
-                                }
-                            }
-                        } catch (error) {
-                            console.error('상태 확인 오류:', error);
-                        }
-                    };
-
-                    setTimeout(checkStatus, 3000);
-
+                    */
                 } catch (error) {
-                    console.error('분석 오류:', error);
-                    setStatus('error');
-                    setMessage('서버 연결에 실패했습니다. 백엔드 서버(python main.py)가 실행중인지 확인해주세요.');
-                    setProgress('');
+                    console.error(error);
+                    alert('분석 중 오류가 발생했습니다');
+                    setStep(2);
                 }
             };
 
-            const resetForm = () => {
-                setStoreName('');
-                setRegion('');
-                setEmail('');
-                setStatus('idle');
-                setMessage('');
-                setProgress('');
-                setSuggestions([]);
-                setShowSuggestions(false);
-                setIsSelected(false); // 🔥 선택 상태 초기화
-            };
+            // Step 1: 질문
+            if (step === 1) {
+                return (
+                    <div className="min-h-screen flex flex-col">
+                        {/* 헤더 */}
+                        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 sm:py-5">
+                            <div className="max-w-3xl mx-auto flex items-center justify-between">
+                                <div>
+                                    <h1 className="text-lg sm:text-xl font-bold text-gray-900">Review Intelligence</h1>
+                                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5">맞춤형 마케팅 전략 분석</p>
+                                </div>
+                                <div className="text-xs sm:text-sm font-medium text-gray-600">
+                                    {questionIndex + 1} / {questions.length}
+                                </div>
+                            </div>
+                        </div>
 
-            return (
-                <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50">
-                    {/* Header */}
-                    <header className="bg-white border-b border-gray-200">
-                        <div className="max-w-7xl mx-auto px-6 py-4">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                    <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
-                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        {/* 진행바 */}
+                        <div className="bg-white border-b border-gray-100">
+                            <div className="h-1 bg-gray-100">
+                                <div 
+                                    className="h-1 hubspot-orange-bg transition-all duration-300"
+                                    style={{ width: `${totalProgress}%` }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 질문 */}
+                        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12">
+                            <div className="max-w-2xl w-full fade-in">
+                                {/* 섹션 라벨 */}
+                                <div className="text-center mb-6 sm:mb-8">
+                                    <div className="inline-block px-3 sm:px-4 py-1 sm:py-1.5 rounded-full gradient-badge text-white text-xs font-semibold mb-3 sm:mb-4 shadow-sm">
+                                        {currentQ.section}
+                                    </div>
+                                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 px-4">
+                                        {currentQ.q}
+                                    </h2>
+                                </div>
+
+                                {/* 옵션 */}
+                                <div className="space-y-2.5 sm:space-y-3">
+                                    {currentQ.opts.map((opt) => (
+                                        <div key={opt.v} className="radio-option">
+                                            <input 
+                                                type="radio"
+                                                id={opt.v}
+                                                name={currentQ.id}
+                                                checked={answers[currentQ.id] === opt.v}
+                                                onChange={() => handleAnswer(opt.v)}
+                                            />
+                                            <label 
+                                                htmlFor={opt.v}
+                                                className="flex items-center justify-between p-3 sm:p-4 border-2 border-gray-200 rounded-xl cursor-pointer transition-all"
+                                            >
+                                                <span className="text-sm sm:text-base font-medium text-gray-900">{opt.l}</span>
+                                                <div className="check-icon hidden w-5 h-5 rounded-full hubspot-orange-bg items-center justify-center flex-shrink-0">
+                                                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                    </svg>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* 뒤로 버튼 */}
+                                {questionIndex > 0 && (
+                                    <button
+                                        onClick={() => setQuestionIndex(questionIndex - 1)}
+                                        className="mt-6 sm:mt-8 text-gray-500 hover:text-gray-700 text-sm font-medium"
+                                    >
+                                        ← 이전 질문
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Step 2: 가게 정보
+            if (step === 2) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 bg-gray-50">
+                        <div className="max-w-lg w-full fade-in">
+                            <div className="bg-white rounded-xl border border-gray-200 p-6 sm:p-8 shadow-sm">
+                                <div className="text-center mb-6 sm:mb-8">
+                                    <div className="w-12 h-12 rounded-full hubspot-orange-light mx-auto mb-4 flex items-center justify-center shadow-sm">
+                                        <svg className="w-6 h-6 hubspot-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                         </svg>
                                     </div>
+                                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">가게 정보 입력</h2>
+                                    <p className="text-sm sm:text-base text-gray-600">거의 다 왔어요! 마지막 정보를 입력해주세요</p>
+                                </div>
+
+                                <div className="space-y-4 sm:space-y-5">
                                     <div>
-                                        <h1 className="text-xl font-bold text-gray-900">Review Intelligence</h1>
-                                        <p className="text-sm text-gray-500">네이버 플레이스 리뷰 AI 분석</p>
+                                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                            가게명 *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={storeName}
+                                            onChange={(e) => setStoreName(e.target.value)}
+                                            placeholder="예: 청담 스케줄"
+                                            className="w-full px-4 py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                            지역 (선택)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={region}
+                                            onChange={(e) => setRegion(e.target.value)}
+                                            placeholder="예: 강남구"
+                                            className="w-full px-4 py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                            이메일 *
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            placeholder="example@email.com"
+                                            className="w-full px-4 py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                        />
+                                        <p className="mt-2 text-xs text-gray-500">분석 리포트를 이메일로 받으실 수 있습니다</p>
                                     </div>
                                 </div>
-                                <div className="text-sm text-gray-500">
-                                    powered by GPT + Claude
-                                </div>
-                            </div>
-                        </div>
-                    </header>
 
-                    {/* Main Content */}
-                    <main className="max-w-4xl mx-auto px-6 py-16">
-                        {/* Hero Section */}
-                        <div className="text-center mb-12">
-                            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl mb-6 shadow-lg">
-                                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                                </svg>
-                            </div>
-                            <h2 className="text-5xl font-bold text-gray-900 mb-4">
-                                가게 이름만 입력하세요
-                            </h2>
-                            <p className="text-xl text-gray-600 mb-2">
-                                네이버 플레이스에서 자동으로 리뷰를 크롤링하고
-                            </p>
-                            <p className="text-xl text-gray-600">
-                                경쟁사 분석까지 AI가 2-3분 안에 완료합니다
-                            </p>
-                        </div>
-
-                        {/* Main Card */}
-                        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-                            <div className="p-10">
-                                <div className="space-y-6">
-                                    {/* 🔍 가게 이름 입력 (자동완성) */}
-                                    <div className="relative" ref={dropdownRef}>
-                                        <label className="block text-sm font-semibold text-gray-900 mb-3">
-                                            가게 이름 *
-                                            <span className="ml-2 text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-medium">
-                                                실시간 검색
-                                            </span>
-                                        </label>
-                                        <div className="relative">
-                                            <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                            </svg>
-                                            <input
-                                                type="text"
-                                                value={storeName}
-                                                onChange={(e) => setStoreName(e.target.value)}
-                                                placeholder="예: 스케줄청담, 성수 카페..."
-                                                className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-orange-500 focus:ring-4 focus:ring-orange-100 focus:outline-none transition-all"
-                                                disabled={status === 'loading'}
-                                                onKeyDown={(e) => e.key === 'Enter' && !showSuggestions && handleAnalyze()}
-                                            />
-                                            {isSearching && (
-                                                <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-orange-500"></div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* 자동완성 드롭다운 */}
-                                        {showSuggestions && suggestions.length > 0 && (
-                                            <div className="absolute z-50 w-full mt-2 bg-white border-2 border-orange-200 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
-                                                {suggestions.map((store, index) => (
-                                                    <div
-                                                        key={index}
-                                                        onClick={() => handleSelectStore(store)}
-                                                        className="p-4 hover:bg-orange-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
-                                                    >
-                                                        <div className="font-semibold text-gray-900">{store.name}</div>
-                                                        <div className="text-sm text-gray-600 mt-1">
-                                                            {store.address} · <span className="text-orange-600">{store.category}</span>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        <p className="mt-2 text-sm text-gray-500">
-                                            네이버 플레이스에 등록된 가게명을 정확히 입력해주세요
-                                        </p>
-                                    </div>
-
-                                    {/* 🌍 지역 입력 (선택사항) */}
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-900 mb-3">
-                                            지역 (선택사항)
-                                        </label>
-                                        <div className="relative">
-                                            <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            </svg>
-                                            <input
-                                                type="text"
-                                                value={region}
-                                                onChange={(e) => setRegion(e.target.value)}
-                                                placeholder="예: 청담, 강남, 성수..."
-                                                className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-orange-500 focus:ring-4 focus:ring-orange-100 focus:outline-none transition-all"
-                                                disabled={status === 'loading'}
-                                            />
-                                        </div>
-                                        <p className="mt-2 text-sm text-gray-500">
-                                            검색 결과를 좁히려면 지역을 입력하세요
-                                        </p>
-                                    </div>
-
-                                    {/* 이메일 입력 */}
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-900 mb-3">
-                                            이메일 주소 *
-                                        </label>
-                                        <div className="relative">
-                                            <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                            </svg>
-                                            <input
-                                                type="email"
-                                                value={email}
-                                                onChange={(e) => setEmail(e.target.value)}
-                                                placeholder="your@email.com"
-                                                className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-orange-500 focus:ring-4 focus:ring-orange-100 focus:outline-none transition-all"
-                                                disabled={status === 'loading'}
-                                                onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
-                                            />
-                                        </div>
-                                        <p className="mt-2 text-sm text-gray-500">
-                                            분석 완료 후 HTML 리포트를 첨부해서 보내드립니다
-                                        </p>
-                                    </div>
-
-                                    {/* 분석 버튼 */}
+                                <div className="flex flex-col sm:flex-row gap-3 mt-6 sm:mt-8">
                                     <button
-                                        onClick={handleAnalyze}
-                                        disabled={status === 'loading'}
-                                        className={`w-full py-5 rounded-xl font-bold text-lg transition-all flex items-center justify-center space-x-3 ${
-                                            status === 'loading'
-                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                                : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
-                                        }`}
+                                        onClick={() => setStep(1)}
+                                        className="w-full sm:flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base"
                                     >
-                                        {status === 'loading' ? (
-                                            <>
-                                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-                                                <span>AI 분석 중...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                                </svg>
-                                                <span>분석 시작하기</span>
-                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                                                </svg>
-                                            </>
-                                        )}
+                                        뒤로
                                     </button>
+                                    <button
+                                        onClick={startAnalysis}
+                                        className="w-full sm:flex-1 px-6 py-3 hubspot-orange-bg text-white font-semibold rounded-lg hover:opacity-90 transition-all shadow-sm hover:shadow-md text-sm sm:text-base"
+                                    >
+                                        분석 시작
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
 
-                                    {/* 진행 상황 표시 */}
-                                    {progress && status === 'loading' && (
-                                        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
-                                            <div className="flex items-center space-x-3">
-                                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                                                <div className="flex-1">
-                                                    <div className="text-sm font-semibold text-blue-900 mb-1">진행 중</div>
-                                                    <div className="text-sm text-blue-700">{progress}</div>
-                                                </div>
+            // Step 3: 분석 중
+            if (step === 3) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 bg-gray-50">
+                        <div className="max-w-md w-full text-center">
+                            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full hubspot-orange-light mx-auto mb-6 flex items-center justify-center">
+                                <div className="w-7 h-7 sm:w-8 sm:h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" style={{ borderWidth: '3px' }}></div>
+                            </div>
+                            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">AI 분석 진행 중</h2>
+                            <p className="text-sm sm:text-base text-gray-600 mb-8">잠시만 기다려주세요...</p>
+                            
+                            <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
+                                <div 
+                                    className="h-2 hubspot-orange-bg transition-all duration-300"
+                                    style={{ width: `${progress}%` }}
+                                />
+                            </div>
+                            <p className="text-sm font-medium text-gray-600 mt-3">{progress}%</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Step 4: 완료
+            if (step === 4) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 bg-gray-50">
+                        <div className="max-w-lg w-full fade-in">
+                            <div className="bg-white rounded-xl border border-gray-200 p-6 sm:p-10 text-center shadow-sm">
+                                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-green-100 mx-auto mb-6 flex items-center justify-center shadow-sm">
+                                    <svg className="w-7 h-7 sm:w-8 sm:h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">분석 완료!</h2>
+                                <p className="text-sm sm:text-base text-gray-600 mb-2">맞춤형 마케팅 전략 리포트가</p>
+                                <p className="text-base sm:text-lg font-semibold hubspot-orange mb-8 break-all">{email}</p>
+                                <p className="text-sm sm:text-base text-gray-600 mb-8 sm:mb-10">로 전송되었습니다</p>
+                                
+                                <div className="bg-gray-50 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8 text-left border border-gray-100">
+                                    <h3 className="font-bold text-gray-900 mb-3 sm:mb-4 text-sm">이메일 포함 내용</h3>
+                                    <ul className="space-y-2 sm:space-y-2.5 text-xs sm:text-sm text-gray-700">
+                                        <li className="flex items-start gap-2">
+                                            <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+                                                <svg className="w-2.5 h-2.5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                </svg>
                                             </div>
-                                        </div>
-                                    )}
-
-                                    {/* 상태 메시지 */}
-                                    {message && (
-                                        <div className={`p-5 rounded-xl border-2 ${
-                                            status === 'success'
-                                                ? 'bg-green-50 border-green-200'
-                                                : status === 'error'
-                                                ? 'bg-red-50 border-red-200'
-                                                : 'bg-blue-50 border-blue-200'
-                                        }`}>
-                                            <div className="flex items-start space-x-3">
-                                                {status === 'success' && (
-                                                    <svg className="w-6 h-6 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                )}
-                                                {status === 'error' && (
-                                                    <svg className="w-6 h-6 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                )}
-                                                {status === 'loading' && (
-                                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 flex-shrink-0"></div>
-                                                )}
-                                                <div className="flex-1">
-                                                    <div className={`font-semibold mb-1 ${
-                                                        status === 'success' ? 'text-green-900' : 
-                                                        status === 'error' ? 'text-red-900' : 'text-blue-900'
-                                                    }`}>
-                                                        {status === 'success' ? '완료!' : status === 'error' ? '오류' : '처리 중'}
-                                                    </div>
-                                                    <div className={`text-sm ${
-                                                        status === 'success' ? 'text-green-800' : 
-                                                        status === 'error' ? 'text-red-800' : 'text-blue-800'
-                                                    }`}>
-                                                        {message}
-                                                    </div>
-                                                </div>
+                                            <span>리뷰 분석 결과 (GPT-4o)</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+                                                <svg className="w-2.5 h-2.5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                </svg>
                                             </div>
-                                            {status === 'success' && (
-                                                <button
-                                                    onClick={resetForm}
-                                                    className="mt-4 w-full py-2 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg font-medium transition-colors"
-                                                >
-                                                    새로운 분석 시작
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
+                                            <span>맞춤형 마케팅 전략 (Claude AI)</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+                                                <svg className="w-2.5 h-2.5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                </svg>
+                                            </div>
+                                            <span>2주 실행 체크리스트</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+                                                <svg className="w-2.5 h-2.5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                </svg>
+                                            </div>
+                                            <span>예산 배분 가이드</span>
+                                        </li>
+                                    </ul>
                                 </div>
-                            </div>
 
-                            {/* 분석 내용 미리보기 */}
-                            <div className="bg-gradient-to-r from-orange-50 to-blue-50 px-10 py-8 border-t border-gray-200">
-                                <h3 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wide">
-                                    📊 리포트에 포함되는 내용
-                                </h3>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="flex items-start space-x-3">
-                                        <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <div className="font-semibold text-gray-900 text-sm">네이버 리뷰 분석</div>
-                                            <div className="text-xs text-gray-600">자동 크롤링 및 감정 분석</div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-start space-x-3">
-                                        <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <div className="font-semibold text-gray-900 text-sm">경쟁사 비교</div>
-                                            <div className="text-xs text-gray-600">위치/업종 기반 자동 분석</div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-start space-x-3">
-                                        <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <div className="font-semibold text-gray-900 text-sm">AI 인사이트</div>
-                                            <div className="text-xs text-gray-600">GPT + Claude 하이브리드</div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-start space-x-3">
-                                        <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <div className="font-semibold text-gray-900 text-sm">실행 체크리스트</div>
-                                            <div className="text-xs text-gray-600">즉시 실행 가능한 액션</div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="w-full px-6 py-3 hubspot-orange-bg text-white font-semibold rounded-lg hover:opacity-90 transition-all shadow-sm hover:shadow-md text-sm sm:text-base"
+                                >
+                                    새로운 분석 시작
+                                </button>
                             </div>
                         </div>
-
-                        {/* Features */}
-                        <div className="grid grid-cols-3 gap-6 mt-12">
-                            <div className="text-center">
-                                <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                    </svg>
-                                </div>
-                                <h3 className="font-bold text-gray-900 mb-2 text-lg">2-3분 완료</h3>
-                                <p className="text-sm text-gray-600">빠른 자동 분석</p>
-                            </div>
-                            <div className="text-center">
-                                <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                                    </svg>
-                                </div>
-                                <h3 className="font-bold text-gray-900 mb-2 text-lg">하이브리드 AI</h3>
-                                <p className="text-sm text-gray-600">GPT + Claude 분석</p>
-                            </div>
-                            <div className="text-center">
-                                <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                                <h3 className="font-bold text-gray-900 mb-2 text-lg">이메일 발송</h3>
-                                <p className="text-sm text-gray-600">HTML 리포트 첨부</p>
-                            </div>
-                        </div>
-                    </main>
-
-                    {/* Footer */}
-                    <footer className="border-t border-gray-200 mt-16">
-                        <div className="max-w-7xl mx-auto px-6 py-8">
-                            <div className="text-center text-sm text-gray-500">
-                                <p className="mb-2">🔒 수집된 데이터는 분석 후 즉시 삭제됩니다</p>
-                                <p className="text-xs text-gray-400">
-                                    네이버 플레이스 공개 리뷰를 기반으로 분석합니다
-                                </p>
-                            </div>
-                        </div>
-                    </footer>
-                </div>
-            );
+                    </div>
+                );
+            }
         }
 
-        // React 앱 렌더링
-        ReactDOM.render(<ReviewIntelligenceApp />, document.getElementById('root'));
+        ReactDOM.render(<App />, document.getElementById('root'));
     </script>
 </body>
 </html>

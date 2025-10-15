@@ -410,7 +410,7 @@ async def expand_reviews(page):
 
 # ==================== 실시간 크롤링 ====================
 
-async def crawl_store_info(store_name, region_hint=None):
+async def crawl_store_info(store_name, region_hint=None, headless=False):
     """네이버 플레이스 크롤링 (블랙리스트 + 첫번째 선택)"""
     print(f"\n{'='*60}")
     print(f"🔍 STEP 1: '{store_name}' 실시간 크롤링")
@@ -421,7 +421,7 @@ async def crawl_store_info(store_name, region_hint=None):
     
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(
-            headless=False,
+            headless=headless,
             args=['--disable-blink-features=AutomationControlled']
         )
         context = await browser.new_context(
@@ -897,7 +897,7 @@ async def main():
     
     print(f"\n✅ 선택된 전략: {strategy_name} (β={beta}, α={alpha})")
     
-    store_data = await crawl_store_info(store_input, region_hint=region_extracted)
+    store_data = await crawl_store_info(store_input, region_hint=region_extracted,headless=False)
     
     if not store_data:
         print("\n❌ 크롤링 실패")
