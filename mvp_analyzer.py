@@ -586,7 +586,39 @@ async def crawl_store_info(store_name, region_hint=None, headless=False):
             detail_url = f"https://m.place.naver.com/restaurant/{place_id}/home"
             await page.goto(detail_url, wait_until="domcontentloaded", timeout=30000)
             await asyncio.sleep(2)
-            
+            total_review_count = 0
+            blog_review_count = 0
+
+            print(f"\n   📊 리뷰/블로그 개수 추출 중...")
+
+            try:
+                # 메타 태그 가져오기
+                meta_content = await page.get_attribute(
+                    'meta[property="og:description"]', 
+                    'content',
+                    timeout=3000
+                )
+                
+                if meta_content:
+                    print(f"   🔍 메타 태그: {meta_content}")
+                    
+                    import re
+                    
+                    # "방문자리뷰 63 · 블로그리뷰 42" 파싱
+                    visitor_match = re.search(r'방문자리뷰\s*(\d+)', meta_content)
+                    if visitor_match:
+                        total_review_count = int(visitor_match.group(1))
+                        print(f"   ✅ 네이버 플레이스 리뷰: {total_review_count}개")
+                    
+                    blog_match = re.search(r'블로그리뷰\s*(\d+)', meta_content)
+                    if blog_match:
+                        blog_review_count = int(blog_match.group(1))
+                        print(f"   ✅ 블로그 리뷰: {blog_review_count}개")
+                else:
+                    print(f"   ⚠️  메타 태그를 찾지 못했습니다")
+
+            except Exception as e:
+                print(f"   ⚠️  개수 추출 실패: {e}")
             # 지역 추출
             if region_hint:
                 region = region_hint
@@ -751,7 +783,9 @@ async def crawl_store_info(store_name, region_hint=None, headless=False):
                 'name': store_name,
                 'district': region,
                 'industry': industry,
-                'reviews': reviews
+                'reviews': reviews,
+                'total_review_count': total_review_count,  # 🔥 메타 태그에서 추출
+                'blog_review_count': blog_review_count     # 🔥 메타 태그에서 추출
             }
             
         except Exception as e:

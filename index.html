@@ -127,6 +127,7 @@
         input[type="text"]:focus,
         input[type="email"]:focus,
         input[type="number"]:focus,
+        input[type="date"]:focus,
         select:focus,
         textarea:focus {
             box-shadow: 0 0 0 3px rgba(255, 122, 89, 0.1), 0 2px 8px rgba(0,0,0,0.08);
@@ -162,9 +163,11 @@
             const [email, setEmail] = useState('');
             const [progress, setProgress] = useState(0);
             
-            // 🔥 NEW: Instagram 계정, 배달 여부
+            // 🔥 NEW: Instagram 계정, 배달 여부, 오픈 날짜
             const [instagramAccount, setInstagramAccount] = useState('');
             const [deliveryAvailable, setDeliveryAvailable] = useState(false);
+    
+        
             
             // 🔥 13번째 질문 상태
             const [currentMarketing, setCurrentMarketing] = useState([]);
@@ -766,7 +769,6 @@
                                             </div>
                                         )}
                                     </div>
-
                                     {/* 🔥 NEW: 배달 가능 여부 */}
                                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                         <label className="flex items-center gap-3 cursor-pointer">

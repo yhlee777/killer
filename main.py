@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# main.py - 13번째 질문 + 스티브 잡스 톤 + 리뷰 교차 분석 완전 통합
+# main.py - 13번째 질문 + 스티브 잡스 톤 + 리뷰 교차 분석 + 인스타그램 자가진단 완전 통합
 
 import sys
 import asyncio
@@ -25,6 +25,7 @@ import urllib.request
 import json
 
 from master_analyzer import run_master_analysis
+from instagram_analyzer import InstagramSelfDiagnosis, run_instagram_diagnosis  # 🔥 추가
 
 app = FastAPI(title="Review Intelligence API")
 
@@ -54,6 +55,10 @@ except:
     NAVER_CLIENT_ID = os.getenv("NAVER_CLIENT_ID", "ZLPHHehmKYVHcF2hUGhQ")
     NAVER_CLIENT_SECRET = os.getenv("NAVER_CLIENT_SECRET", "NrVaQLeDfV")
 
+# 🔥 Instagram API 키
+INSTAGRAM_ACCESS_TOKEN = os.getenv("INSTAGRAM_ACCESS_TOKEN", "")
+INSTAGRAM_USER_ID = os.getenv("INSTAGRAM_USER_ID", "")
+
 
 # ==================== Request Models ====================
 
@@ -78,6 +83,9 @@ class AnalyzeRequest(BaseModel):
     # 🔥 13번째 질문 (가중치 50%)
     current_marketing: Optional[List[str]] = []
     marketing_details: Optional[Dict[str, Dict[str, str]]] = {}
+    
+    # 🔥 14번째 질문: 인스타그램 계정 (선택)
+    instagram_username: Optional[str] = None
 
 
 # ==================== 네이버 검색 API ====================
@@ -499,7 +507,7 @@ def generate_why_what_how_strategy(
         return "전략 생성에 실패했습니다."
 
 
-# ==================== 통합 리포트 생성 (잡스 톤 적용) ====================
+# ==================== 통합 리포트 생성 (잡스 톤 + 인스타그램) ====================
 
 def create_professional_dashboard(
     html_file: str,
@@ -507,10 +515,13 @@ def create_professional_dashboard(
     review_insights: str,
     marketing_analysis: str,
     strategy: str,
-    store_name: str
+    store_name: str,
+    current_marketing: List[str],
+    marketing_details: Dict,
+    instagram_result: Optional[Dict] = None  # 🔥 추가
 ) -> str:
     """
-    스티브 잡스 톤이 적용된 전문 대시보드 생성
+    스티브 잡스 톤이 적용된 전문 대시보드 생성 (인스타그램 섹션 포함)
     """
     try:
         # 기존 HTML 읽기
@@ -575,6 +586,115 @@ def create_professional_dashboard(
         </div>
         """
         
+        # 🔥 인스타그램 섹션 (있을 경우만)
+        instagram_section = ""
+        if instagram_result:
+            scores = instagram_result['scores']
+            metrics = instagram_result['metrics']
+            priorities = instagram_result['priorities']
+            account = instagram_result['account']
+            hashtags = instagram_result['hashtags']
+            
+            # 점수에 따른 등급
+            overall_score = scores['overall']
+            if overall_score >= 80:
+                grade = "🏆 우수"
+                grade_color = "#10b981"
+            elif overall_score >= 60:
+                grade = "✅ 양호"
+                grade_color = "#3b82f6"
+            elif overall_score >= 40:
+                grade = "⚠️ 개선 필요"
+                grade_color = "#f59e0b"
+            else:
+                grade = "🔴 위험"
+                grade_color = "#ef4444"
+            
+            # 우선순위 HTML
+            priorities_html = ""
+            for i, priority in enumerate(priorities, 1):
+                priorities_html += f"""
+                <div style="background: #f8fafc; padding: 20px; margin: 15px 0; border-left: 4px solid #667eea; border-radius: 8px;">
+                    <div style="font-size: 18px; font-weight: 600; color: #1e293b; margin-bottom: 10px;">
+                        {i}순위: {priority['title']}
+                    </div>
+                    <div style="font-size: 14px; color: #64748b; margin-bottom: 12px;">
+                        💡 {priority['reason']}
+                    </div>
+                    <div style="font-size: 14px; line-height: 1.8; color: #334155; white-space: pre-wrap;">
+                        <strong>실행 방법:</strong><br>
+                        {priority['action']}
+                    </div>
+                    <div style="margin-top: 12px; padding: 10px; background: #e0e7ff; border-radius: 6px; color: #4338ca; font-size: 13px; font-weight: 500;">
+                        📈 예상 효과: {priority['impact']}
+                    </div>
+                </div>
+                """
+            
+            instagram_section = f"""
+        <div id="instagram-diagnosis" class="section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; margin: 20px 0; border-radius: 15px; box-shadow: 0 10px 30px rgba(102,126,234,0.3);">
+            <h2 style="color: white; border-bottom: 3px solid white; padding-bottom: 15px; margin-bottom: 30px;">
+                📱 Instagram 자가진단
+            </h2>
+            
+            <!-- 계정 요약 -->
+            <div style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); padding: 25px; border-radius: 12px; margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.2);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+                    <div>
+                        <div style="font-size: 16px; color: rgba(255,255,255,0.9); margin-bottom: 8px;">계정명</div>
+                        <div style="font-size: 24px; font-weight: 700; color: white;">@{account['username']}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 16px; color: rgba(255,255,255,0.9); margin-bottom: 8px;">팔로워</div>
+                        <div style="font-size: 24px; font-weight: 700; color: white;">{account['followers']:,}명</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 16px; color: rgba(255,255,255,0.9); margin-bottom: 8px;">게시물</div>
+                        <div style="font-size: 24px; font-weight: 700; color: white;">{account['media_count']}개</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 16px; color: rgba(255,255,255,0.9); margin-bottom: 8px;">종합 등급</div>
+                        <div style="font-size: 24px; font-weight: 700; color: {grade_color}; background: white; padding: 8px 16px; border-radius: 8px;">
+                            {grade} ({overall_score}점)
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 세부 점수 -->
+            <div style="background: white; padding: 30px; border-radius: 12px; margin-bottom: 25px;">
+                <h3 style="color: #1e293b; margin-bottom: 20px; font-size: 18px;">📊 세부 점수</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div style="padding: 15px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                        <div style="font-size: 13px; color: #64748b; margin-bottom: 5px;">팔로워</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #1e293b;">{scores['followers']}<span style="font-size: 16px; color: #64748b;">/100</span></div>
+                    </div>
+                    <div style="padding: 15px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #10b981;">
+                        <div style="font-size: 13px; color: #64748b; margin-bottom: 5px;">인게이지먼트</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #1e293b;">{scores['engagement']}<span style="font-size: 16px; color: #64748b;">/100</span></div>
+                        <div style="font-size: 12px; color: #64748b; margin-top: 5px;">현재 {metrics['engagement_rate']:.2f}%</div>
+                    </div>
+                    <div style="padding: 15px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                        <div style="font-size: 13px; color: #64748b; margin-bottom: 5px;">게시 빈도</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #1e293b;">{scores['frequency']}<span style="font-size: 16px; color: #64748b;">/100</span></div>
+                        <div style="font-size: 12px; color: #64748b; margin-top: 5px;">주 {metrics['posts_per_week']:.1f}회</div>
+                    </div>
+                    <div style="padding: 15px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #8b5cf6;">
+                        <div style="font-size: 13px; color: #64748b; margin-bottom: 5px;">해시태그</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #1e293b;">{scores['hashtags']}<span style="font-size: 16px; color: #64748b;">/100</span></div>
+                        <div style="font-size: 12px; color: #64748b; margin-top: 5px;">평균 {hashtags['avg_per_post']:.0f}개</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 개선 우선순위 -->
+            <div style="background: white; padding: 30px; border-radius: 12px;">
+                <h3 style="color: #1e293b; margin-bottom: 20px; font-size: 18px;">🎯 개선 우선순위 TOP 3</h3>
+                {priorities_html}
+            </div>
+        </div>
+        """
+        
         # 🔥 전략 제시
         strategy_section = f"""
         <div id="strategy" class="section" style="background: white; padding: 40px; margin: 20px 0; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
@@ -609,7 +729,7 @@ def create_professional_dashboard(
         # 통합
         integrated = html_content.replace(
             '</body>',
-            f'{authenticity_header}\n{hook_banner}\n{insights_section}\n{marketing_section}\n{strategy_section}\n{footer}\n</body>'
+            f'{authenticity_header}\n{hook_banner}\n{insights_section}\n{marketing_section}\n{instagram_section}\n{strategy_section}\n{footer}\n</body>'
         )
         
         # 저장
@@ -647,6 +767,7 @@ def send_email_with_report(to_email: str, store_name: str, html_file: str) -> bo
 ✅ 스티브 잡스 톤 후킹 문장
 ✅ 리뷰 교차 분석 인사이트
 ✅ 현재 마케팅 활동 진단 (가중치 50%)
+✅ Instagram 자가진단 (선택)
 ✅ WHY-WHAT-HOW 전략 제시
 ✅ 경쟁사 비교 분석
 ✅ AI 인사이트 (GPT + Claude)
@@ -654,7 +775,7 @@ def send_email_with_report(to_email: str, store_name: str, html_file: str) -> bo
 
 📎 첨부된 HTML 파일을 브라우저로 열어서 확인하세요!
 
-💡 모든 전략은 13가지 질문 기반으로 맞춤화되었습니다.
+💡 모든 전략은 14가지 질문 기반으로 맞춤화되었습니다.
 
 감사합니다,
 KILLER 팀
@@ -697,9 +818,10 @@ async def analyze_and_send(
     email: str,
     questions: Dict[str, str],
     current_marketing: List[str],
-    marketing_details: Dict[str, Dict[str, str]]
+    marketing_details: Dict[str, Dict[str, str]],
+    instagram_username: Optional[str] = None  # 🔥 추가
 ):
-    """백그라운드 분석 작업 (13번째 질문 포함)"""
+    """백그라운드 분석 작업 (13번째 질문 + 인스타그램)"""
     try:
         print(f"\n{'='*70}")
         print(f"🚀 KILLER 분석 시작")
@@ -708,6 +830,7 @@ async def analyze_and_send(
         print(f"   이메일: {email}")
         print(f"   예산: {questions.get('budget', '미입력')}")
         print(f"   현재 마케팅: {', '.join(current_marketing) if current_marketing else '없음'}")
+        print(f"   인스타그램: @{instagram_username if instagram_username else '없음'}")
         print(f"{'='*70}\n")
         
         jobs[job_id]['status'] = 'processing'
@@ -781,6 +904,36 @@ async def analyze_and_send(
             current_marketing, marketing_details, questions
         )
         
+        # 🔥 6-2. 인스타그램 자가진단 (선택적)
+        instagram_result = None
+        if instagram_username and INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_USER_ID:
+            jobs[job_id]['progress'] = '📱 인스타그램 계정 진단 중...'
+            print(f"\n{'='*70}")
+            print(f"📱 STEP 6-2: 인스타그램 자가진단")
+            print(f"{'='*70}")
+            
+            industry = questions.get('industry', '카페')
+            
+            try:
+                instagram_result = await run_instagram_diagnosis(
+                    ig_username=instagram_username,
+                    industry=industry,
+                    access_token=INSTAGRAM_ACCESS_TOKEN,
+                    user_id=INSTAGRAM_USER_ID
+                )
+                
+                if instagram_result:
+                    print(f"   ✅ 인스타그램 진단 완료!")
+                    print(f"   종합 점수: {instagram_result['scores']['overall']}/100점")
+                else:
+                    print(f"   ⚠️  진단 실패 (비공개 계정 또는 권한 문제)")
+            
+            except Exception as e:
+                print(f"   ⚠️  인스타그램 진단 오류: {e}")
+                instagram_result = None
+        elif instagram_username:
+            print(f"⚠️  인스타그램 API 키가 설정되지 않음 - 진단 스킵")
+        
         # 🔥 7. WHY-WHAT-HOW 전략 생성
         jobs[job_id]['progress'] = '🎯 WHY-WHAT-HOW 전략 생성 중...'
         strategy = generate_why_what_how_strategy(
@@ -793,7 +946,8 @@ async def analyze_and_send(
         final_html = create_professional_dashboard(
             html_file, hook_sentence, review_insights,
             marketing_analysis, strategy, store_name,
-            current_marketing, marketing_details  # 🔥 13번째 질문 데이터 전달
+            current_marketing, marketing_details,
+            instagram_result  # 🔥 인스타그램 결과 전달
         )
         
         # 9. 이메일 전송
@@ -833,18 +987,20 @@ async def root():
     """API 상태 확인"""
     return {
         "service": "KILLER API",
-        "version": "4.0.0",
+        "version": "5.0.0",
         "status": "running",
-        "description": "13가지 질문 기반 맞춤형 마케팅 전략 + 스티브 잡스 톤",
+        "description": "14가지 질문 기반 맞춤형 마케팅 전략 + 스티브 잡스 톤 + Instagram 자가진단",
         "features": [
             "🔥 13번째 질문 (가중치 50%)",
             "💬 스티브 잡스 톤 후킹 문장",
             "🔍 리뷰 교차 분석 인사이트",
             "🎯 WHY-WHAT-HOW 전략 구조",
             "🤖 AI 인사이트 (GPT + Claude)",
+            "📱 Instagram 자가진단 (경쟁사 비교 없음)",
             "📊 통합 대시보드",
             "📧 이메일 전송"
-        ]
+        ],
+        "instagram_status": "✅ 활성화" if INSTAGRAM_ACCESS_TOKEN else "⚠️ API 키 필요"
     }
 
 
@@ -888,7 +1044,7 @@ async def search_stores(q: str):
 
 @app.post("/api/analyze")
 async def analyze(request: AnalyzeRequest, background_tasks: BackgroundTasks):
-    """가게 분석 시작 (13번째 질문 포함)"""
+    """가게 분석 시작 (13번째 질문 + 인스타그램 포함)"""
     job_id = str(uuid.uuid4())
     
     # 12가지 질문
@@ -911,6 +1067,9 @@ async def analyze(request: AnalyzeRequest, background_tasks: BackgroundTasks):
     current_marketing = request.current_marketing or []
     marketing_details = request.marketing_details or {}
     
+    # 🔥 14번째: 인스타그램
+    instagram_username = request.instagram_username
+    
     jobs[job_id] = {
         "status": "queued",
         "progress": "대기 중...",
@@ -918,13 +1077,15 @@ async def analyze(request: AnalyzeRequest, background_tasks: BackgroundTasks):
         "store_name": request.store_name,
         "email": request.email,
         "questions": questions,
-        "current_marketing": current_marketing
+        "current_marketing": current_marketing,
+        "instagram_username": instagram_username
     }
     
     print(f"\n📝 새로운 KILLER 분석 요청")
     print(f"   Job ID: {job_id}")
     print(f"   가게: {request.store_name}")
-    print(f"   현재 마케팅: {', '.join(current_marketing) if current_marketing else '없음'}\n")
+    print(f"   현재 마케팅: {', '.join(current_marketing) if current_marketing else '없음'}")
+    print(f"   인스타그램: @{instagram_username if instagram_username else '없음'}\n")
     
     background_tasks.add_task(
         analyze_and_send,
@@ -932,8 +1093,9 @@ async def analyze(request: AnalyzeRequest, background_tasks: BackgroundTasks):
         request.store_name,
         request.email,
         questions,
-        current_marketing,  # 🔥 전달
-        marketing_details   # 🔥 전달
+        current_marketing,
+        marketing_details,
+        instagram_username
     )
     
     return {
@@ -987,11 +1149,17 @@ if __name__ == "__main__":
     
     print("""
 ╔══════════════════════════════════════════════════════════════════╗
-║                  🔥 KILLER API Server v4.0                       ║
-║          13가지 질문 + 스티브 잡스 톤 + 교차 분석               ║
+║                  🔥 KILLER API Server v5.0                       ║
+║      14가지 질문 + 스티브 잡스 톤 + Instagram 자가진단          ║
 ╚══════════════════════════════════════════════════════════════════╝
 
-🔥 NEW! 13번째 질문 (가중치 50%)
+🔥 NEW! 14번째 질문 - Instagram 계정 (선택)
+   • 팔로워/인게이지먼트/게시빈도 분석
+   • 업종별 벤치마크 비교
+   • 개선 우선순위 TOP 3 제시
+   • 경쟁사 비교 없음 (자가진단만)
+
+🔥 13번째 질문 (가중치 50%)
    • 현재 마케팅 활동 진단
    • 채널별 구체적 분석
 
@@ -1022,5 +1190,10 @@ if __name__ == "__main__":
         print("⚠️  경고: 이메일 환경변수가 설정되지 않았습니다!")
     else:
         print(f"✅ 이메일 설정됨: {SMTP_EMAIL}\n")
+    
+    if INSTAGRAM_ACCESS_TOKEN:
+        print(f"✅ Instagram API 활성화\n")
+    else:
+        print(f"⚠️  Instagram API 키 없음 (선택사항)\n")
     
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
