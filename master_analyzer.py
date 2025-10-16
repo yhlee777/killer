@@ -437,7 +437,13 @@ async def run_master_analysis(store_name: str, address: str):
 ╚══════════════════════════════════════════════════════════════╝
     """)
 
-    return True
+    return {
+        'reviews': unified_reviews,
+        'keyword_stats': our_stats.get('keyword_counts', {}),
+        'statistical_comparison': comparison_result,
+        'target_store': target_store,
+        'competitors': competitors
+    }
 # ==================== CLI 실행 ====================
 
 async def main():

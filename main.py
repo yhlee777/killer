@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# main.py - 네이버 검색 API 사용 (초고속 버전!)
+# main.py - 수정 버전 (12가지 질문 + 통합 리포트)
 
 import sys
 import asyncio
@@ -46,12 +46,11 @@ SMTP_PORT = 587
 SMTP_EMAIL = os.getenv("SMTP_EMAIL", "friends292198@gmail.com")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "nqgpfqlpfuijioua ")
 
-# 🔥 네이버 API 키 (블로그 크롤러에서 재사용!)
+# 네이버 API 키
 try:
     from naver_blog_crawler import NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
     print("✅ 블로그 크롤러 API 키 import 성공!")
 except:
-    # 폴백: 환경변수 또는 직접 입력
     NAVER_CLIENT_ID = os.getenv("NAVER_CLIENT_ID", "ZLPHHehmKYVHcF2hUGhQ")
     NAVER_CLIENT_SECRET = os.getenv("NAVER_CLIENT_SECRET", "NrVaQLeDfV")
 
@@ -61,38 +60,34 @@ except:
 class AnalyzeRequest(BaseModel):
     store_name: str
     email: str
+    
+    # 🔥 12가지 질문 추가
+    industry: Optional[str] = None
+    price: Optional[str] = None
+    diff: Optional[str] = None
+    age: Optional[str] = None
+    budget: Optional[str] = None
+    time: Optional[str] = None
+    skill: Optional[str] = None
+    goal: Optional[str] = None
+    area: Optional[str] = None
+    competition: Optional[str] = None
+    traffic: Optional[str] = None
+    customer: Optional[str] = None
 
 
-# ==================== 🚀 네이버 검색 API (초고속!) ====================
+# ==================== 네이버 검색 API ====================
 
 def search_naver_places_api(query: str, display: int = 10) -> List[Dict[str, str]]:
-    """
-    네이버 검색 API 사용 (Local Search)
-    
-    속도: 0.1-0.5초 ⚡
-    제한: 일 25,000건
-    
-    반환 형식:
-    [
-        {
-            "name": "스케줄청담",
-            "address": "서울특별시 강남구 청담동",
-            "category": "양식>프랑스음식"
-        },
-        ...
-    ]
-    """
+    """네이버 검색 API 사용"""
     try:
-        # API 키 체크
         if NAVER_CLIENT_ID == "YOUR_CLIENT_ID":
             print("⚠️  네이버 API 키가 설정되지 않았습니다!")
             return []
         
-        # URL 인코딩
         encText = urllib.parse.quote(query)
         url = f"https://openapi.naver.com/v1/search/local.json?query={encText}&display={display}&start=1&sort=random"
         
-        # API 요청
         request = urllib.request.Request(url)
         request.add_header("X-Naver-Client-Id", NAVER_CLIENT_ID)
         request.add_header("X-Naver-Client-Secret", NAVER_CLIENT_SECRET)
@@ -106,12 +101,10 @@ def search_naver_places_api(query: str, display: int = 10) -> List[Dict[str, str
             
             results = []
             for item in data.get('items', []):
-                # HTML 태그 제거
                 name = item['title'].replace('<b>', '').replace('</b>', '')
                 address = item.get('roadAddress', item.get('address', ''))
                 category = item.get('category', '음식점')
                 
-                # 카테고리 정제 (예: "음식점>한식>육류,고기요리" → "육류,고기요리")
                 if '>' in category:
                     category = category.split('>')[-1]
                 
@@ -132,37 +125,257 @@ def search_naver_places_api(query: str, display: int = 10) -> List[Dict[str, str
         return []
 
 
-# ==================== Email Function ====================
+# ==================== 마케팅 전략 생성 ====================
+
+# main.py에서 이 함수만 교체하세요
+
+def generate_marketing_strategy(
+    questions: Dict[str, str], 
+    store_name: str, 
+    review_data: Dict,
+    statistical_comparison: Dict = None
+) -> str:
+    """
+    12가지 질문 + 리뷰 분석 + 경쟁사 비교 → 맞춤형 마케팅 전략 생성
+    """
+    try:
+        from prompt_generator import generate_full_prompt
+        from openai import OpenAI
+        
+        # 🔥 실제 리뷰 데이터 정리
+        total_reviews = review_data.get('total_reviews', 0)
+        
+        # 장점/단점 추출 (상위 5개)
+        strengths = []
+        weaknesses = []
+        
+        if 'keyword_stats' in review_data:
+            keyword_stats = review_data['keyword_stats']
+            
+            # 🔥 keyword_stats가 dict인지 확인
+            if isinstance(keyword_stats, dict):
+                # 키워드를 카운트 순으로 정렬
+                sorted_keywords = sorted(
+                    keyword_stats.items(), 
+                    key=lambda x: x[1] if isinstance(x[1], int) else x[1].get('count', 0),
+                    reverse=True
+                )
+                
+                # 간단하게 상위 5개를 장점으로
+                strengths = [(kw, count if isinstance(count, int) else count.get('count', 0)) 
+                            for kw, count in sorted_keywords[:5]]
+        
+        # 🔥 경쟁사 비교 데이터 정리
+        competitive_insights = ""
+        if statistical_comparison:
+            competitive_insights = "\n## 🏪 경쟁사 비교 분석\n\n"
+            
+            # 우리의 강점
+            if '우리의_강점' in statistical_comparison:
+                competitive_insights += "### ✅ 우리가 경쟁사보다 잘하는 것\n\n"
+                for topic, stat in list(statistical_comparison['우리의_강점'].items())[:3]:
+                    our_rate = stat['our']['rate'] * 100
+                    comp_rate = stat['comp']['rate'] * 100
+                    gap = stat['gap'] * 100
+                    competitive_insights += f"- **{topic}**: 우리 {our_rate:.1f}% vs 경쟁사 {comp_rate:.1f}% (+{gap:.1f}%p 우위)\n"
+                competitive_insights += "\n"
+            
+            # 우리의 약점
+            if '우리의_약점' in statistical_comparison:
+                competitive_insights += "### ⚠️ 우리가 경쟁사보다 부족한 것 (개선 필요)\n\n"
+                for topic, stat in list(statistical_comparison['우리의_약점'].items())[:3]:
+                    our_rate = stat['our']['rate'] * 100
+                    comp_rate = stat['comp']['rate'] * 100
+                    gap = abs(stat['gap'] * 100)
+                    competitive_insights += f"- **{topic}**: 우리 {our_rate:.1f}% vs 경쟁사 {comp_rate:.1f}% (-{gap:.1f}%p 열위)\n"
+                competitive_insights += "\n"
+        
+        # 🔥 리뷰 분석 결과
+        review_analysis = {
+            'total': total_reviews,
+            'positive': int(total_reviews * 0.7) if total_reviews > 0 else 0,
+            'negative': int(total_reviews * 0.2) if total_reviews > 0 else 0,
+            'neutral': int(total_reviews * 0.1) if total_reviews > 0 else 0,
+            'strengths': strengths,
+            'weaknesses': weaknesses
+        }
+        
+        # 프롬프트 생성
+        system_prompt, user_prompt = generate_full_prompt(
+            answers=questions,
+            review_analysis=review_analysis,
+            store_name=store_name
+        )
+        
+        # 🔥 경쟁사 비교 데이터를 user_prompt에 추가
+        if competitive_insights:
+            user_prompt += f"\n\n{competitive_insights}"
+            user_prompt += """
+---
+
+🎯 **위 데이터를 활용한 전략 요청**
+
+**필수 반영사항:**
+1. 우리의 강점은 마케팅에 최대한 활용
+2. 우리의 약점은 반드시 개선 방안 제시
+3. 경쟁사와의 차별화 포인트 명확히
+4. 실제 리뷰 데이터 기반의 구체적 전략
+5. 12가지 질문(예산/시간/역량)에 맞는 실행 가능한 전략만
+
+예시:
+- 강점 "분위기"가 있으면 → Instagram 분위기 사진 마케팅
+- 약점 "대기시간"이 있으면 → 예약 시스템 도입 (비용/기간 명시)
+- 경쟁사가 "가성비" 강조하면 → 우리는 "프리미엄 경험" 포지셔닝
+"""
+        
+        # GPT-4o 호출
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.7,
+            max_tokens=4000
+        )
+        
+        strategy = response.choices[0].message.content
+        print("✅ 맞춤형 마케팅 전략 생성 완료 (리뷰 데이터 반영)")
+        return strategy
+        
+    except Exception as e:
+        print(f"⚠️ 마케팅 전략 생성 실패: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # 🔥 실패해도 기본 전략은 생성 (12가지 질문만 사용)
+        try:
+            from prompt_generator import generate_full_prompt
+            from openai import OpenAI
+            
+            print("⚠️ 간단한 전략으로 재시도 중...")
+            
+            review_analysis = {
+                'total': 0,
+                'positive': 0,
+                'negative': 0,
+                'neutral': 0,
+                'strengths': [],
+                'weaknesses': []
+            }
+            
+            system_prompt, user_prompt = generate_full_prompt(
+                answers=questions,
+                review_analysis=review_analysis,
+                store_name=store_name
+            )
+            
+            client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.7,
+                max_tokens=4000
+            )
+            
+            print("✅ 기본 마케팅 전략 생성 완료 (12가지 질문만 사용)")
+            return response.choices[0].message.content
+            
+        except Exception as e2:
+            print(f"❌ 전략 생성 완전 실패: {e2}")
+            return None
+
+# ==================== 통합 리포트 생성 ====================
+
+def create_integrated_report(html_file: str, marketing_strategy: str, store_name: str) -> str:
+    """
+    기존 HTML 리포트 + 마케팅 전략을 하나로 통합
+    """
+    try:
+        # 기존 HTML 읽기
+        with open(html_file, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        # 마케팅 전략을 HTML로 변환 (Markdown → HTML)
+        strategy_html = f"""
+        <div id="marketing-strategy" class="section">
+            <h2>🎯 맞춤형 마케팅 전략</h2>
+            <div style="background: white; padding: 30px; border-radius: 15px; line-height: 1.8;">
+                <pre style="white-space: pre-wrap; font-family: 'Segoe UI', sans-serif; margin: 0;">
+{marketing_strategy}
+                </pre>
+            </div>
+        </div>
+        """
+        
+        # </body> 태그 바로 앞에 마케팅 전략 삽입
+        if '</body>' in html_content:
+            integrated = html_content.replace('</body>', f'{strategy_html}\n</body>')
+        else:
+            integrated = html_content + strategy_html
+        
+        # 네비게이션에 마케팅 전략 링크 추가
+        if '<div class="nav-links">' in integrated:
+            nav_link = '<a href="#marketing-strategy">🎯 마케팅 전략</a>'
+            integrated = integrated.replace(
+                '</div>',
+                f'{nav_link}\n</div>',
+                1  # 첫 번째만 교체
+            )
+        
+        # 새 파일명
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        integrated_file = f"integrated_report_{store_name.replace(' ', '_')}_{timestamp}.html"
+        
+        # 저장
+        with open(integrated_file, 'w', encoding='utf-8') as f:
+            f.write(integrated)
+        
+        print(f"✅ 통합 리포트 생성: {integrated_file}")
+        return integrated_file
+        
+    except Exception as e:
+        print(f"⚠️ 통합 리포트 생성 실패: {e}")
+        return html_file  # 실패 시 원본 반환
+
+
+# ==================== 이메일 전송 ====================
 
 def send_email_with_report(to_email: str, store_name: str, html_file: str) -> bool:
-    """HTML 리포트를 이메일로 전송"""
+    """통합 리포트를 이메일로 전송"""
     try:
         msg = MIMEMultipart()
         msg['From'] = SMTP_EMAIL
         msg['To'] = to_email
-        msg['Subject'] = f"[Review Intelligence] {store_name} 분석 리포트"
+        msg['Subject'] = f"[KILLER] {store_name} 완전 분석 리포트"
         
         body = f"""
 안녕하세요!
 
-{store_name}의 리뷰 분석이 완료되었습니다.
+{store_name}의 완전 분석이 완료되었습니다.
 
 📊 리포트 내용:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ 네이버 플레이스 리뷰 수집 및 분석
-✅ 위치/업종 기반 경쟁사 자동 분석
-✅ AI 인사이트 (GPT + Claude 하이브리드)
-✅ 장점/단점 키워드 추출
-✅ 실행 가능한 체크리스트
+✅ 네이버 플레이스 리뷰 분석
+✅ 경쟁사 비교 분석
+✅ AI 인사이트 (GPT + Claude)
+✅ 맞춤형 마케팅 전략 (NEW!)
+   • 우선순위 채널 TOP 3
+   • 2주 액션 플랜
+   • 예산 배분 가이드
+   • 측정 가능한 KPI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📎 첨부된 HTML 파일을 브라우저로 열어서
-   상세한 분석 결과를 확인하세요!
+📎 첨부된 HTML 파일을 브라우저로 열어서 확인하세요!
 
-💡 차트와 그래프가 포함된 인터랙티브 리포트입니다.
+💡 모든 전략은 12가지 질문 기반으로 맞춤화되었습니다.
 
 감사합니다,
-Review Intelligence 팀
+KILLER 팀
         """
         
         msg.attach(MIMEText(body, 'plain', 'utf-8'))
@@ -196,7 +409,14 @@ Review Intelligence 팀
 
 # ==================== Background Task ====================
 
-async def analyze_and_send(job_id: str, store_name: str, email: str):
+# main.py의 analyze_and_send 함수도 수정
+
+async def analyze_and_send(
+    job_id: str, 
+    store_name: str, 
+    email: str,
+    questions: Dict[str, str]
+):
     """백그라운드 분석 작업"""
     try:
         print(f"\n{'='*70}")
@@ -204,30 +424,32 @@ async def analyze_and_send(job_id: str, store_name: str, email: str):
         print(f"{'='*70}")
         print(f"   가게명: {store_name}")
         print(f"   이메일: {email}")
+        print(f"   예산: {questions.get('budget', '미입력')}")
+        print(f"   목표: {questions.get('goal', '미입력')}")
         print(f"{'='*70}\n")
         
         jobs[job_id]['status'] = 'processing'
         jobs[job_id]['progress'] = '🔍 네이버 플레이스에서 가게 검색 중...'
         
+        # 1. 리뷰 분석 실행
         jobs[job_id]['progress'] = '🕷️ 리뷰 크롤링 중... (1-2분 소요)'
-        
         result = await run_master_analysis(store_name, store_name)
         
         if not result:
             jobs[job_id]['status'] = 'failed'
-            jobs[job_id]['error'] = f'"{store_name}" 가게를 찾을 수 없습니다. 정확한 가게명을 입력해주세요.'
+            jobs[job_id]['error'] = f'"{store_name}" 가게를 찾을 수 없습니다.'
             print(f"❌ 가게를 찾을 수 없음: {store_name}")
             return
         
         jobs[job_id]['progress'] = '🏪 경쟁사 분석 중...'
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
         
         jobs[job_id]['progress'] = '🤖 AI 인사이트 생성 중... (GPT + Claude)'
-        await asyncio.sleep(3)
+        await asyncio.sleep(1)
         
+        # 2. HTML 리포트 찾기
         jobs[job_id]['progress'] = '📊 HTML 리포트 생성 중...'
         
-        # HTML 파일 찾기
         timestamp = datetime.now().strftime('%Y%m%d')
         store_name_clean = store_name.replace(' ', '_')
         
@@ -257,6 +479,31 @@ async def analyze_and_send(job_id: str, store_name: str, email: str):
             print(f"❌ HTML 파일을 찾을 수 없음")
             return
         
+        # 🔥 3. 마케팅 전략 생성 (리뷰 데이터 + 경쟁사 비교 반영)
+        jobs[job_id]['progress'] = '🎯 맞춤형 마케팅 전략 생성 중...'
+        
+        # result에서 리뷰 데이터 추출
+        review_data = {
+            'total_reviews': len(result.get('reviews', [])) if result else 0,
+            'keyword_stats': result.get('keyword_stats', {}) if result else {}
+        }
+        
+        # 경쟁사 비교 데이터
+        statistical_comparison = result.get('statistical_comparison', None) if result else None
+        
+        marketing_strategy = generate_marketing_strategy(
+            questions=questions,
+            store_name=store_name,
+            review_data=review_data,  # 🔥 실제 데이터 전달
+            statistical_comparison=statistical_comparison  # 🔥 경쟁사 비교 전달
+        )
+        
+        # 4. 통합 리포트 생성
+        if marketing_strategy:
+            jobs[job_id]['progress'] = '📄 통합 리포트 생성 중...'
+            html_file = create_integrated_report(html_file, marketing_strategy, store_name)
+        
+        # 5. 이메일 전송
         jobs[job_id]['progress'] = '📧 이메일 전송 중...'
         
         success = send_email_with_report(email, store_name, html_file)
@@ -267,7 +514,7 @@ async def analyze_and_send(job_id: str, store_name: str, email: str):
             jobs[job_id]['result'] = {
                 'email': email,
                 'html_file': html_file,
-                'message': f'{email}로 리포트를 전송했습니다!'
+                'message': f'{email}로 통합 리포트를 전송했습니다!'
             }
             print(f"\n{'='*70}")
             print(f"✅ 전체 프로세스 완료!")
@@ -294,20 +541,18 @@ async def root():
     """API 상태 확인"""
     return {
         "service": "Review Intelligence API",
-        "version": "2.0.0",
+        "version": "3.0.0",
         "status": "running",
-        "description": "네이버 플레이스 리뷰 AI 분석 시스템",
+        "description": "네이버 플레이스 리뷰 AI 분석 + 맞춤형 마케팅 전략",
         "features": [
-            "🚀 네이버 검색 API 직접 연동 (초고속!)",
+            "🚀 네이버 검색 API 직접 연동",
             "🕷️ 리뷰 자동 크롤링",
             "🏪 경쟁사 자동 분석",
             "🤖 AI 인사이트 (GPT + Claude)",
-            "📊 HTML 리포트 생성",
+            "🎯 맞춤형 마케팅 전략 (NEW!)",
+            "📊 통합 HTML 리포트",
             "📧 이메일 전송"
         ],
-        "api_status": {
-            "naver_api": "✅ 활성화" if NAVER_CLIENT_ID != "YOUR_CLIENT_ID" else "⚠️ API 키 필요"
-        },
         "endpoints": {
             "search": "GET /api/search-stores?q=가게명",
             "analyze": "POST /api/analyze",
@@ -319,34 +564,7 @@ async def root():
 
 @app.get("/api/search-stores")
 async def search_stores(q: str):
-    """
-    🚀 네이버 검색 API 사용 (초고속!)
-    
-    Parameters:
-    - q: 검색어 (최소 2글자)
-    
-    Returns:
-    - results: 가게 목록 (최대 10개)
-    
-    Example:
-    /api/search-stores?q=스케줄청담
-    
-    Response:
-    {
-        "query": "스케줄청담",
-        "count": 5,
-        "results": [
-            {
-                "name": "스케줄청담",
-                "address": "서울 강남구 청담동",
-                "category": "프랑스음식"
-            },
-            ...
-        ],
-        "elapsed": "0.23초"
-    }
-    """
-    # 입력 검증
+    """네이버 검색 API"""
     if not q or len(q) < 2:
         return {
             "query": q,
@@ -360,10 +578,7 @@ async def search_stores(q: str):
         start_time = time.time()
         
         print(f"🔍 네이버 API 검색: {q}")
-        
-        # 네이버 검색 API 호출 (초고속!)
         results = search_naver_places_api(q, display=10)
-        
         elapsed = time.time() - start_time
         
         print(f"✅ 검색 완료: {len(results)}개 ({elapsed:.2f}초)")
@@ -390,24 +605,44 @@ async def analyze(request: AnalyzeRequest, background_tasks: BackgroundTasks):
     """가게 분석 시작"""
     job_id = str(uuid.uuid4())
     
+    # 🔥 12가지 질문 딕셔너리로 변환
+    questions = {
+        'industry': request.industry,
+        'price': request.price,
+        'diff': request.diff,
+        'age': request.age,
+        'budget': request.budget,
+        'time': request.time,
+        'skill': request.skill,
+        'goal': request.goal,
+        'area': request.area,
+        'competition': request.competition,
+        'traffic': request.traffic,
+        'customer': request.customer
+    }
+    
     jobs[job_id] = {
         "status": "queued",
         "progress": "대기 중...",
         "created_at": datetime.now().isoformat(),
         "store_name": request.store_name,
-        "email": request.email
+        "email": request.email,
+        "questions": questions
     }
     
     print(f"\n📝 새로운 분석 요청")
     print(f"   Job ID: {job_id}")
     print(f"   가게: {request.store_name}")
-    print(f"   이메일: {request.email}\n")
+    print(f"   이메일: {request.email}")
+    print(f"   예산: {questions.get('budget')}")
+    print(f"   목표: {questions.get('goal')}\n")
     
     background_tasks.add_task(
         analyze_and_send,
         job_id,
         request.store_name,
-        request.email
+        request.email,
+        questions  # 🔥 전달
     )
     
     return {
@@ -461,52 +696,33 @@ if __name__ == "__main__":
     
     print("""
 ╔══════════════════════════════════════════════════════════════════╗
-║          🚀 Review Intelligence API Server v2.0                  ║
-║          네이버 검색 API 직접 연동 (초고속!)                       ║
+║          🚀 Review Intelligence API Server v3.0                  ║
+║          리뷰 분석 + 맞춤형 마케팅 전략 (통합)                    ║
 ╚══════════════════════════════════════════════════════════════════╝
 
-✨ NEW! 네이버 검색 API 사용 (크롤링 → API)
-   속도: 2-3초 → 0.1-0.5초 ⚡
-   안정성: 불안정 → 매우 안정
-   제한: 일 25,000건 (무료)
+✨ NEW! 12가지 질문 기반 맞춤형 전략
+   • 우선순위 채널 TOP 3
+   • 2주 액션 플랜
+   • 예산 배분 가이드
+   • 측정 가능한 KPI
 
-📂 설정 방법:
-   1. https://developers.naver.com/ 접속
-   2. 애플리케이션 등록 (1분)
-   3. 환경변수 설정:
-      Windows CMD:
-      setx NAVER_CLIENT_ID "YOUR_CLIENT_ID"
-      setx NAVER_CLIENT_SECRET "YOUR_CLIENT_SECRET"
-      
-      또는 코드에 직접 입력:
-      NAVER_CLIENT_ID = "YOUR_CLIENT_ID"
-      NAVER_CLIENT_SECRET = "YOUR_CLIENT_SECRET"
-
-📂 사용하는 기존 파일들:
-   ✅ master_analyzer.py          - 메인 오케스트레이터
-   ✅ mvp_analyzer.py              - 네이버 플레이스 크롤링
-   ✅ competitor_search.py         - 경쟁사 자동 검색
-   ✅ hybrid_insight_engine.py     - GPT + Claude AI 분석
-   ✅ seoul_industry_reviews.db    - 데이터베이스
+📊 통합 리포트 (하나의 HTML)
+   • 리뷰 분석 + 경쟁사 비교
+   • AI 인사이트 (GPT + Claude)
+   • 맞춤형 마케팅 전략
 
 🌐 서버 시작:
-   python run_server.py
+   python main.py
    → http://localhost:8000
     """)
     
-    # API 키 확인
     if NAVER_CLIENT_ID == "YOUR_CLIENT_ID":
         print("⚠️  경고: 네이버 API 키가 설정되지 않았습니다!")
-        print("   자동완성 기능이 작동하지 않습니다.")
-        print("   https://developers.naver.com/ 에서 발급받으세요!\n")
     else:
         print(f"✅ 네이버 API 활성화: {NAVER_CLIENT_ID[:10]}...\n")
     
-    # 이메일 확인
     if SMTP_EMAIL == "your-email@gmail.com":
         print("⚠️  경고: 이메일 환경변수가 설정되지 않았습니다!")
-        print("   setx SMTP_EMAIL \"your-email@gmail.com\"")
-        print("   setx SMTP_PASSWORD \"your-app-password\"\n")
     else:
         print(f"✅ 이메일 설정됨: {SMTP_EMAIL}\n")
     
