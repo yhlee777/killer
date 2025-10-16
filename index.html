@@ -19,18 +19,13 @@
             -moz-osx-font-smoothing: grayscale;
         }
         
-        /* HubSpot 오렌지 - 깔끔한 그라데이션 */
         .hubspot-orange { color: #FF7A59; }
         .hubspot-orange-bg { 
             background: linear-gradient(135deg, #FF7A59 0%, #FF9472 100%);
         }
         .hubspot-orange-light { background-color: #FFF5F3; }
-        .hubspot-orange-border { border-color: #FF7A59; }
         
-        /* 라디오 버튼 - 프로페셔널 */
-        .radio-option input[type="radio"] {
-            display: none;
-        }
+        .radio-option input[type="radio"] { display: none; }
         .radio-option input[type="radio"]:checked + label {
             border-color: #FF7A59;
             background: linear-gradient(135deg, #FFF5F3 0%, #FFFFFF 100%);
@@ -50,10 +45,7 @@
             border-color: #FFB299;
         }
         
-        /* 체크박스 - 세련된 스타일 */
-        .checkbox-option input[type="checkbox"] {
-            display: none;
-        }
+        .checkbox-option input[type="checkbox"] { display: none; }
         .checkbox-option input[type="checkbox"]:checked + label {
             border-color: #FF7A59;
             background: linear-gradient(135deg, #FFF5F3 0%, #FFFFFF 100%);
@@ -75,7 +67,6 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
         
-        /* 애니메이션 - 부드럽고 세련되게 */
         @keyframes scaleIn {
             0% { transform: scale(0); opacity: 0; }
             50% { transform: scale(1.1); }
@@ -93,27 +84,15 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
-        @keyframes slideInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* 그라데이션 배지 - 프로페셔널 */
         .gradient-badge {
             background: linear-gradient(135deg, #FF7A59 0%, #FF9472 100%);
             box-shadow: 0 4px 12px rgba(255, 122, 89, 0.25);
         }
         
-        /* 부드러운 등장 애니메이션 */
         .fade-in {
             animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
-        .slide-in-up {
-            animation: slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        /* 자동완성 드롭다운 - 깔끔한 그림자 */
         .autocomplete-dropdown {
             position: absolute;
             top: 100%;
@@ -145,15 +124,6 @@
             border-bottom: none;
         }
         
-        /* Input 필드 - 프로페셔널 */
-        input[type="text"],
-        input[type="email"],
-        input[type="number"],
-        select,
-        textarea {
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
         input[type="text"]:focus,
         input[type="email"]:focus,
         input[type="number"]:focus,
@@ -162,7 +132,6 @@
             box-shadow: 0 0 0 3px rgba(255, 122, 89, 0.1), 0 2px 8px rgba(0,0,0,0.08);
         }
         
-        /* 버튼 - 그라데이션 + 그림자 */
         button {
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -176,56 +145,13 @@
             transform: translateY(0);
             box-shadow: 0 4px 12px rgba(255, 122, 89, 0.25);
         }
-        
-        /* 프로그레스 바 - 그라데이션 */
-        .progress-bar {
-            background: linear-gradient(90deg, #FF7A59 0%, #FF9472 50%, #FFB299 100%);
-            background-size: 200% 100%;
-            animation: shimmer 2s linear infinite;
-        }
-        
-        @keyframes shimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-        
-        /* 카드 - 깔끔한 그림자 */
-        .card {
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .card:hover {
-            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-            transform: translateY(-2px);
-        }
-        
-        /* 스크롤바 커스텀 (Webkit) */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, #FF7A59 0%, #FF9472 100%);
-            border-radius: 10px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, #FF6B4A 0%, #FF8563 100%);
-        }
     </style>
 </head>
 <body class="bg-gray-50">
     <div id="root"></div>
     
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useRef } = React;
         const API_BASE_URL = 'http://localhost:8000';
 
         function App() {
@@ -235,6 +161,10 @@
             const [storeName, setStoreName] = useState('');
             const [email, setEmail] = useState('');
             const [progress, setProgress] = useState(0);
+            
+            // 🔥 NEW: Instagram 계정, 배달 여부
+            const [instagramAccount, setInstagramAccount] = useState('');
+            const [deliveryAvailable, setDeliveryAvailable] = useState(false);
             
             // 🔥 13번째 질문 상태
             const [currentMarketing, setCurrentMarketing] = useState([]);
@@ -322,93 +252,72 @@
                 ]},
             ];
 
-            // 🔥 13번째 질문: 현재 마케팅 활동
+            // 🔥 13번째 질문: 현재 마케팅 활동 (Instagram 제외, 객관식)
             const marketingChannels = [
                 { 
-                    id: 'instagram', 
-                    label: 'Instagram',
-                    fields: [
-                        { id: 'followers', label: '팔로워 수', type: 'number', placeholder: '예: 500' },
-                        { id: 'posts_per_week', label: '주 포스팅 수', type: 'number', placeholder: '예: 3' },
-                        { id: 'reels', label: '릴스 사용 여부', type: 'select', options: ['사용 중', '사용 안 함'] },
-                        { id: 'content_type', label: '콘텐츠 유형', type: 'text', placeholder: '예: 음식 사진, 매장 분위기' }
-                    ]
-                },
-                { 
                     id: 'naver_blog', 
-                    label: '네이버 블로그',
-                    fields: [
-                        { id: 'posts_per_month', label: '월 포스팅 수', type: 'number', placeholder: '예: 4' },
-                        { id: 'avg_views', label: '평균 조회수', type: 'number', placeholder: '예: 200' },
-                        { id: 'operating_period', label: '운영 기간 (개월)', type: 'number', placeholder: '예: 12' }
+                    label: '블로그 체험단/협찬',
+                    question: '얼마나 자주 하시나요?',
+                    options: [
+                        { value: 'frequent', label: '월 5회 이상' },
+                        { value: 'regular', label: '월 2-4회' },
+                        { value: 'occasional', label: '월 1회' },
+                        { value: 'rare', label: '가끔씩' },
+                        { value: 'minimal', label: '거의 안 함' }
                     ]
                 },
                 { 
                     id: 'naver_place', 
                     label: '네이버 플레이스',
-                    fields: [
-                        { id: 'review_response', label: '리뷰 답변 비율', type: 'select', options: ['100%', '50% 이상', '50% 미만', '하지 않음'] },
-                        { id: 'photo_update', label: '사진 업데이트 빈도', type: 'select', options: ['주 1회 이상', '월 1회', '거의 안 함'] },
-                        { id: 'menu_update', label: '메뉴 최신화', type: 'select', options: ['항상 최신', '가끔 업데이트', '오래됨'] }
-                    ]
-                },
-                { 
-                    id: 'tiktok', 
-                    label: 'TikTok',
-                    fields: [
-                        { id: 'followers', label: '팔로워 수', type: 'number', placeholder: '예: 300' },
-                        { id: 'videos_per_week', label: '주 영상 수', type: 'number', placeholder: '예: 2' },
-                        { id: 'avg_views', label: '평균 조회수', type: 'number', placeholder: '예: 1000' }
-                    ]
-                },
-                { 
-                    id: 'youtube', 
-                    label: 'YouTube',
-                    fields: [
-                        { id: 'subscribers', label: '구독자 수', type: 'number', placeholder: '예: 150' },
-                        { id: 'videos_per_month', label: '월 영상 수', type: 'number', placeholder: '예: 2' },
-                        { id: 'avg_views', label: '평균 조회수', type: 'number', placeholder: '예: 500' }
+                    question: '리뷰 관리를 얼마나 하시나요?',
+                    options: [
+                        { value: 'all_reply', label: '모든 리뷰에 답변' },
+                        { value: 'most_reply', label: '50% 이상 답변' },
+                        { value: 'some_reply', label: '가끔 답변' },
+                        { value: 'no_reply', label: '거의 답변 안 함' }
                     ]
                 },
                 { 
                     id: 'influencer', 
                     label: '인플루언서 협업',
-                    fields: [
-                        { id: 'collab_count', label: '협업 횟수 (최근 6개월)', type: 'number', placeholder: '예: 3' },
-                        { id: 'collab_type', label: '협업 유형', type: 'text', placeholder: '예: 마이크로, 체험단' },
-                        { id: 'monthly_budget', label: '월 예산 (만원)', type: 'number', placeholder: '예: 30' },
-                        { id: 'effectiveness', label: '체감 효과', type: 'select', options: ['매우 좋음', '좋음', '보통', '나쁨'] }
-                    ]
-                },
-                { 
-                    id: 'paid_ads', 
-                    label: '페이스북/카카오 광고',
-                    fields: [
-                        { id: 'monthly_spend', label: '월 광고비 (만원)', type: 'number', placeholder: '예: 50' },
-                        { id: 'operating_period', label: '운영 기간 (개월)', type: 'number', placeholder: '예: 6' },
-                        { id: 'effectiveness', label: '효과', type: 'select', options: ['매우 좋음', '좋음', '보통', '나쁨'] }
+                    question: '얼마나 자주 하시나요?',
+                    options: [
+                        { value: 'frequent', label: '월 3회 이상' },
+                        { value: 'regular', label: '월 1-2회' },
+                        { value: 'occasional', label: '분기 1-2회' },
+                        { value: 'rare', label: '1년에 몇 번' },
+                        { value: 'minimal', label: '거의 안 함' }
                     ]
                 },
                 { 
                     id: 'delivery_promo', 
                     label: '배달앱 프로모션',
-                    fields: [
-                        { id: 'platform', label: '플랫폼', type: 'text', placeholder: '예: 배민, 쿠팡이츠' },
-                        { id: 'promo_type', label: '프로모션 종류', type: 'text', placeholder: '예: 할인, 1+1' },
-                        { id: 'monthly_cost', label: '월 비용 (만원)', type: 'number', placeholder: '예: 20' }
+                    question: '얼마나 자주 하시나요?',
+                    options: [
+                        { value: 'always', label: '상시 진행' },
+                        { value: 'frequent', label: '주 1-2회' },
+                        { value: 'occasional', label: '월 1-2회' },
+                        { value: 'rare', label: '가끔씩' },
+                        { value: 'minimal', label: '거의 안 함' }
                     ]
                 },
                 { 
                     id: 'other', 
                     label: '기타',
-                    fields: [
-                        { id: 'description', label: '설명', type: 'textarea', placeholder: '어떤 마케팅 활동을 하고 계신가요?' }
+                    question: '어떤 마케팅을 하시나요?',
+                    options: [
+                        { value: 'offline', label: '오프라인 전단지/포스터' },
+                        { value: 'community', label: '동네 카페/맘카페' },
+                        { value: 'partnership', label: '제휴/협업' },
+                        { value: 'event', label: '자체 이벤트' },
+                        { value: 'etc', label: '기타' }
                     ]
                 },
                 { 
                     id: 'none', 
                     label: '없음 (아무것도 안 함)',
-                    fields: []
+                    question: null,
+                    options: []
                 }
             ];
 
@@ -417,22 +326,18 @@
                 ? ((questionIndex + 1) / 13) * 100 
                 : (12.5 / 13) * 100;
 
-            // 🔥 마케팅 채널 토글
             const toggleMarketingChannel = (channelId) => {
-                // '없음' 선택 시 다른 것 모두 해제
                 if (channelId === 'none') {
                     setCurrentMarketing(['none']);
                     setMarketingDetails({});
                     return;
                 }
                 
-                // 다른 것 선택 시 '없음' 해제
                 if (currentMarketing.includes('none')) {
                     setCurrentMarketing([channelId]);
                     return;
                 }
                 
-                // 일반 토글
                 if (currentMarketing.includes(channelId)) {
                     setCurrentMarketing(currentMarketing.filter(id => id !== channelId));
                     const newDetails = { ...marketingDetails };
@@ -443,18 +348,13 @@
                 }
             };
 
-            // 🔥 마케팅 상세 정보 업데이트
-            const updateMarketingDetail = (channelId, fieldId, value) => {
+            const updateMarketingDetail = (channelId, value) => {
                 setMarketingDetails({
                     ...marketingDetails,
-                    [channelId]: {
-                        ...(marketingDetails[channelId] || {}),
-                        [fieldId]: value
-                    }
+                    [channelId]: value
                 });
             };
 
-            // 🔥 가게명 검색 (디바운싱)
             const handleStoreNameChange = (value) => {
                 setStoreName(value);
                 
@@ -483,7 +383,6 @@
                 }
             };
 
-            // 🔥 가게 선택
             const handleSelectStore = (store) => {
                 setStoreName(store.name);
                 setShowDropdown(false);
@@ -496,26 +395,23 @@
                 if (questionIndex < questions.length - 1) {
                     setTimeout(() => setQuestionIndex(questionIndex + 1), 200);
                 } else {
-                    // 12번째 질문 끝나면 13번째로
                     setTimeout(() => setQuestionIndex(12), 200);
                 }
             };
 
-            // 🔥 13번째 질문 완료
             const complete13thQuestion = () => {
                 if (currentMarketing.length === 0) {
                     alert('최소 1개 이상 선택해주세요 (없음 포함)');
                     return;
                 }
                 
-                // '없음' 제외하고 선택한 채널이 있는데 상세 정보가 없으면 경고
-                const selectedChannels = currentMarketing.filter(id => id !== 'none' && id !== 'other');
+                const selectedChannels = currentMarketing.filter(id => id !== 'none');
                 for (const channelId of selectedChannels) {
                     const channel = marketingChannels.find(c => c.id === channelId);
-                    if (channel && channel.fields.length > 0) {
-                        const details = marketingDetails[channelId];
-                        if (!details || Object.keys(details).length === 0) {
-                            alert(`${channel.label}의 상세 정보를 입력해주세요`);
+                    if (channel && channel.options && channel.options.length > 0) {
+                        const answer = marketingDetails[channelId];
+                        if (!answer) {
+                            alert(`${channel.label}의 질문에 답변해주세요`);
                             return;
                         }
                     }
@@ -526,7 +422,7 @@
 
             const startAnalysis = async () => {
                 if (!storeName.trim() || !email.trim()) {
-                    alert('모든 항목을 입력해주세요');
+                    alert('가게명과 이메일은 필수입니다');
                     return;
                 }
                 
@@ -560,9 +456,10 @@
                             competition: answers.competition,
                             traffic: answers.traffic,
                             customer: answers.customer,
-                            // 🔥 13번째 질문 데이터 추가
                             current_marketing: currentMarketing,
-                            marketing_details: marketingDetails
+                            marketing_details: marketingDetails,
+                            instagram_account: instagramAccount,
+                            delivery_available: deliveryAvailable
                         }),
                     });
 
@@ -651,15 +548,14 @@
                                 <div className="max-w-3xl mx-auto fade-in">
                                     <div className="text-center mb-6 sm:mb-8">
                                         <div className="inline-block px-3 sm:px-4 py-1 sm:py-1.5 rounded-full gradient-badge text-white text-xs font-semibold mb-3 sm:mb-4 shadow-sm">
-                                            현재 마케팅 활동 (최고 가중치 50%)
+                                            현재 마케팅 활동 (가중치 50%)
                                         </div>
                                         <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 px-4">
                                             현재 하고 계신 마케팅은? (중복 선택 가능)
                                         </h2>
-                                        <p className="text-sm text-gray-600 mt-2">선택한 항목의 상세 정보를 입력해주세요</p>
+                                        <p className="text-sm text-gray-600 mt-2">선택한 항목의 질문에 답변해주세요</p>
                                     </div>
 
-                                    {/* 체크박스 선택 */}
                                     <div className="space-y-3 mb-6">
                                         {marketingChannels.map((channel) => (
                                             <div key={channel.id} className="checkbox-option">
@@ -684,51 +580,43 @@
                                         ))}
                                     </div>
 
-                                    {/* 선택한 채널의 상세 입력란 */}
-                                    {currentMarketing.filter(id => id !== 'none').map(channelId => {
+                                    {currentMarketing.filter(id => id !== 'none').map((channelId) => {
                                         const channel = marketingChannels.find(c => c.id === channelId);
-                                        if (!channel || channel.fields.length === 0) return null;
+                                        if (!channel || !channel.options || channel.options.length === 0) return null;
 
                                         return (
-                                            <div key={channelId} className="mb-6 p-4 sm:p-5 bg-orange-50 rounded-xl border border-orange-100">
-                                                <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                                    <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-                                                    {channel.label} 상세 정보
+                                            <div 
+                                                key={channelId} 
+                                                className="mb-6 p-5 bg-orange-50 rounded-xl border-2 border-orange-200"
+                                            >
+                                                <h3 className="font-bold text-gray-900 mb-4 text-base">
+                                                    {channel.label}
                                                 </h3>
-                                                <div className="space-y-3">
-                                                    {channel.fields.map(field => (
-                                                        <div key={field.id}>
-                                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                                {field.label}
+                                                <p className="text-sm text-gray-700 mb-4 font-medium">
+                                                    {channel.question}
+                                                </p>
+                                                
+                                                <div className="space-y-2">
+                                                    {channel.options.map((option) => (
+                                                        <div key={option.value} className="radio-option">
+                                                            <input 
+                                                                type="radio"
+                                                                id={`${channelId}_${option.value}`}
+                                                                name={channelId}
+                                                                checked={marketingDetails[channelId] === option.value}
+                                                                onChange={() => updateMarketingDetail(channelId, option.value)}
+                                                            />
+                                                            <label 
+                                                                htmlFor={`${channelId}_${option.value}`}
+                                                                className="flex items-center justify-between p-3 border-2 border-gray-200 rounded-xl cursor-pointer transition-all"
+                                                            >
+                                                                <span className="text-sm font-medium text-gray-900">{option.label}</span>
+                                                                <div className="check-icon hidden w-5 h-5 rounded-full hubspot-orange-bg items-center justify-center flex-shrink-0">
+                                                                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                                    </svg>
+                                                                </div>
                                                             </label>
-                                                            {field.type === 'select' ? (
-                                                                <select
-                                                                    value={marketingDetails[channelId]?.[field.id] || ''}
-                                                                    onChange={(e) => updateMarketingDetail(channelId, field.id, e.target.value)}
-                                                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                                                                >
-                                                                    <option value="">선택하세요</option>
-                                                                    {field.options.map(opt => (
-                                                                        <option key={opt} value={opt}>{opt}</option>
-                                                                    ))}
-                                                                </select>
-                                                            ) : field.type === 'textarea' ? (
-                                                                <textarea
-                                                                    value={marketingDetails[channelId]?.[field.id] || ''}
-                                                                    onChange={(e) => updateMarketingDetail(channelId, field.id, e.target.value)}
-                                                                    placeholder={field.placeholder}
-                                                                    rows={3}
-                                                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                                                                />
-                                                            ) : (
-                                                                <input
-                                                                    type={field.type}
-                                                                    value={marketingDetails[channelId]?.[field.id] || ''}
-                                                                    onChange={(e) => updateMarketingDetail(channelId, field.id, e.target.value)}
-                                                                    placeholder={field.placeholder}
-                                                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                                                                />
-                                                            )}
                                                         </div>
                                                     ))}
                                                 </div>
@@ -879,6 +767,39 @@
                                         )}
                                     </div>
 
+                                    {/* 🔥 NEW: 배달 가능 여부 */}
+                                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                        <label className="flex items-center gap-3 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={deliveryAvailable}
+                                                onChange={(e) => setDeliveryAvailable(e.target.checked)}
+                                                className="w-5 h-5 text-orange-500 border-gray-300 rounded focus:ring-orange-500"
+                                            />
+                                            <span className="text-sm font-semibold text-gray-900">배달 가능</span>
+                                        </label>
+                                        <p className="mt-2 text-xs text-gray-500 ml-8">
+                                            체크 시 배달앱(배민/쿠팡이츠/요기요) 전략이 포함됩니다
+                                        </p>
+                                    </div>
+
+                                    {/* 🔥 NEW: Instagram 계정 */}
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                            Instagram 계정 (선택)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={instagramAccount}
+                                            onChange={(e) => setInstagramAccount(e.target.value)}
+                                            placeholder="@계정명 또는 계정명"
+                                            className="w-full px-4 py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                        />
+                                        <p className="mt-2 text-xs text-gray-500">
+                                            ℹ️ 비즈니스 계정이면 자동으로 분석됩니다
+                                        </p>
+                                    </div>
+
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-900 mb-2">
                                             이메일 *
@@ -953,44 +874,6 @@
                                 <p className="text-base sm:text-lg font-semibold hubspot-orange mb-8 break-all">{email}</p>
                                 <p className="text-sm sm:text-base text-gray-600 mb-8 sm:mb-10">로 전송되었습니다</p>
                                 
-                                <div className="bg-gray-50 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8 text-left border border-gray-100">
-                                    <h3 className="font-bold text-gray-900 mb-3 sm:mb-4 text-sm">이메일 포함 내용</h3>
-                                    <ul className="space-y-2 sm:space-y-2.5 text-xs sm:text-sm text-gray-700">
-                                        <li className="flex items-start gap-2">
-                                            <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center mt-0.5 flex-shrink-0">
-                                                <svg className="w-2.5 h-2.5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                                </svg>
-                                            </div>
-                                            <span>리뷰 분석 결과 (GPT-4o)</span>
-                                        </li>
-                                        <li className="flex items-start gap-2">
-                                            <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center mt-0.5 flex-shrink-0">
-                                                <svg className="w-2.5 h-2.5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                                </svg>
-                                            </div>
-                                            <span>맞춤형 마케팅 전략 (Claude AI)</span>
-                                        </li>
-                                        <li className="flex items-start gap-2">
-                                            <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center mt-0.5 flex-shrink-0">
-                                                <svg className="w-2.5 h-2.5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                                </svg>
-                                            </div>
-                                            <span>2주 실행 체크리스트</span>
-                                        </li>
-                                        <li className="flex items-start gap-2">
-                                            <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center mt-0.5 flex-shrink-0">
-                                                <svg className="w-2.5 h-2.5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                                </svg>
-                                            </div>
-                                            <span>예산 배분 가이드</span>
-                                        </li>
-                                    </ul>
-                                </div>
-
                                 <button
                                     onClick={() => window.location.reload()}
                                     className="w-full px-6 py-3 hubspot-orange-bg text-white font-semibold rounded-lg hover:opacity-90 transition-all shadow-sm hover:shadow-md text-sm sm:text-base"
